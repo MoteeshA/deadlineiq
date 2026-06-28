@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Video Demo (exceeds 100MB Git limit)
+public/IQ_FINAL.mp4

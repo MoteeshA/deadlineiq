@@ -142,6 +142,31 @@ export default function Login() {
         <HeroSection onGoogleClick={handleLogin} />
       </div>
 
+      {/* Immersive Product Demo Video */}
+      <div className="py-16 bg-[#03030a] relative border-b border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.08),transparent_50%)]" />
+        <div className="max-w-5xl mx-auto px-5 relative z-10">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+              Immersive Workspace Demonstration
+            </h2>
+            <p className="mt-2 text-sm text-slate-400 max-w-xl mx-auto">
+              Watch DeadlineIQ's agentic co-pilot and client-side neural network plan tasks, allocate calendar focus slots, and calculate workload capacity.
+            </p>
+          </div>
+          
+          <div className="relative aspect-video rounded-3xl border border-white/10 overflow-hidden shadow-2xl bg-black">
+            <video 
+              src="/IQ_FINAL.mp4" 
+              className="w-full h-full object-cover" 
+              controls 
+              preload="metadata"
+              poster="/screenshots/dashboard1.png"
+            />
+          </div>
+        </div>
+      </div>
+
       <div id="experience">
         <DeadlineExperience />
       </div>
