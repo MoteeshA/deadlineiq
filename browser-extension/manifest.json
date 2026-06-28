@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "DeadlineIQ Companion",
+  "version": "1.0.0",
+  "description": "Proactive anti-procrastination browser companion for DeadlineIQ.",
+  "permissions": ["activeTab", "contextMenus", "notifications", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
