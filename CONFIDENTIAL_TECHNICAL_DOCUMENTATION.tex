@@ -263,8 +263,8 @@ The main dashboard is the command centre of DeadlineIQ. It surfaces live task me
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/dashboard1.png}
-  \caption{Primary Navigation HUD showing floating telemetry modules and live task tracker}
+  \includegraphics[width=0.95\linewidth]{screenshots/dashboard1_annotated.png}
+  \caption{Primary HUD showing annotated key regions: Active AI banner (top) and floating controls (bottom right).}
   \label{fig:dashboard}
 \end{figure}
 
@@ -285,8 +285,8 @@ An integrated client-side neural net assesses active task parameters in real tim
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/dashboard2.png}
-  \caption{Local MLP Neural Network Risk Model Widget displaying real-time task completion probability.}
+  \includegraphics[width=0.95\linewidth]{screenshots/dashboard2_annotated.png}
+  \caption{Local MLP Neural Network widget showing the risk classification highlight.}
   \label{fig:riskmodel}
 \end{figure}
 
@@ -297,8 +297,8 @@ This module displays floating telemetry panels indicating current focus scores, 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/dashboard3.png}
-  \caption{Capacity Mapping and Focus Nudge module showing available workload capacity.}
+  \includegraphics[width=0.95\linewidth]{screenshots/dashboard3_annotated.png}
+  \caption{Capacity Dial \& Audio Telemetry layout showing workload limits.}
   \label{fig:capacity}
 \end{figure}
 
@@ -309,7 +309,7 @@ An automated schedule deconstruction module. Gemini 2.5 Flash parses the voice o
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/gemini AI planner.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/gemini AI planner.png}
   \caption{Gemini NL Task Parser showing text-to-task deconstruction and semantic structure evaluation.}
   \label{fig:geminiparser}
 \end{figure}
@@ -334,8 +334,8 @@ A sliding AI sidebar where users can naturally command, reschedule, and complete
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.85\linewidth]{screenshots/chatbot and mic.png}
-  \caption{IQ Coach Co-pilot Sidebar executing conversation-driven database writes and scheduling.}
+  \includegraphics[width=6.5cm]{screenshots/chatbot and mic.png}
+  \caption{Speech integration and co-pilot activation buttons shown at original high-definition scale.}
   \label{fig:iqcoach}
 \end{figure}
 
@@ -366,7 +366,7 @@ A drag-and-drop board for tracking commitments across progress columns. Audio ch
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/tasks.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/tasks.png}
   \caption{Kanban Progress Board with columns: \textit{Due Today}, \textit{In Progress}, \textit{Completed}}
   \label{fig:kanban}
 \end{figure}
@@ -378,7 +378,7 @@ An edge-to-edge borderless weekly calendar that overlays tasks alongside Google 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/calander.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/calander.png}
   \caption{Glassmorphic VisionOS Calendar Grid with Google Calendar sync}
   \label{fig:calendar}
 \end{figure}
@@ -390,7 +390,7 @@ This analytics module catalogues behavioural delay patterns to identify the user
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/insights.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/insights.png}
   \caption{Procrastination Forensics and Predictive Score Dashboard}
   \label{fig:forensics}
 \end{figure}
@@ -402,7 +402,7 @@ Monitors routine completions with glowing circular progress gauges and integrate
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.9\linewidth]{screenshots/habits.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/habits.png}
   \caption{Habit Streak Tracker with circular progress gauges}
   \label{fig:habits}
 \end{figure}
@@ -414,7 +414,7 @@ The companion Chrome extension synchronises web research tabs, captures snippets
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.75\linewidth]{screenshots/extension.png}
+  \includegraphics[width=0.95\linewidth]{screenshots/extension.png}
   \caption{Chrome Extension Panel — browser-to-dashboard task pipeline}
   \label{fig:extension}
 \end{figure}
@@ -661,7 +661,6 @@ VITE_FIREBASE_APP_ID=your_firebase_app_id
 
 \begin{tcolorbox}[infobox, title={Tip — Gemini API Key}]
 The Gemini Developer API Key can be entered directly in the web UI under \textbf{Settings $\rightarrow$ API Configuration}, so you do not need to add it to the \texttt{.env} file.
-\\
 \end{tcolorbox}
 
 \subsection{Step 3 — Start the Development Server}
