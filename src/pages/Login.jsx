@@ -1,7 +1,7 @@
 // src/pages/Login.jsx
 // Immersive spatial dashboard & luxury logo reveal presentation container for DeadlineIQ
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auth, signInWithGoogle, db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -22,6 +22,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const videoRef = useRef(null);
   
   // Navigation & UI States
   const [activeSection, setActiveSection] = useState("hero");
@@ -84,6 +85,32 @@ export default function Login() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Autoplay video on scroll intersection
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch((err) => {
+            console.warn("Autoplay was prevented by browser:", err);
+          });
+        } else {
+          video.pause();
+        }
+      },
+      {
+        threshold: 0.5, // Trigger when 50% of the video is visible
+      }
+    );
+
+    observer.observe(video);
+    return () => {
+      if (video) observer.unobserve(video);
+    };
   }, []);
 
   const handleSectionJump = (sectionId) => {
@@ -157,9 +184,13 @@ export default function Login() {
           
           <div className="relative aspect-video rounded-3xl border border-white/10 overflow-hidden shadow-2xl bg-black">
             <video 
+              ref={videoRef}
               src="/IQ_FINAL.mp4" 
               className="w-full h-full object-cover" 
               controls 
+              muted
+              playsInline
+              loop
               preload="metadata"
               poster="/screenshots/dashboard1.png"
             />
