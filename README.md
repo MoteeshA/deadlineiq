@@ -12,25 +12,29 @@ DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat p
 The main dashboard page features floating telemetry modules, active multi-agent status banners, and live task trackers styled in a premium VisionOS-inspired slate dark-mode.
 
 <p align="center">
-  <img src="screenshots/dashboard1.png" width="90%" alt="Primary Navigation HUD" />
+  <img src="screenshots/dashboard1.png" width="90%" alt="Primary Navigation HUD" /><br />
+  <em>Figure 1.1: Primary Spatial HUD & Telemetry Dashboard (Overview of the slate dark-mode user interface displaying active agents, focus scores, and real-time commitment pipelines).</em>
 </p>
 
 <p align="center">
   <img src="screenshots/dashboard2.png" width="48%" alt="Local Neural Network Risk Model" />
-  <img src="screenshots/dashboard3.png" width="48%" alt="Capacity Mapping and Nudges" />
+  <img src="screenshots/dashboard3.png" width="48%" alt="Capacity Mapping and Nudges" /><br />
+  <em>Figure 1.2 (Left): Client-Side MLP Risk Assessor (A live client-side neural network predicting procrastination risk using online backpropagation learning). Figure 1.3 (Right): Capacity Map & Nudge Engine (Workload allocation tracker displaying remaining daily energy slots).</em>
 </p>
 
 ### Natural Language Scheduling & AI Co-pilot
-Dictate tasks using the Web Speech API. Gemini automatically parses messy text (e.g., *"Finish presentation slides by tomorrow at 4 PM, high priority, will take 3h"*) into structured tasks, subtasks, and confidence scores. Use the sliding sidebar chat to command, complete, or reschedule tasks.
+Dictate tasks using the Web Speech API. Gemini automatically parses messy text into structured tasks, subtasks, and confidence scores. Use the sliding sidebar chat to command, complete, or reschedule tasks.
 
 <p align="center">
   <img src="screenshots/gemini AI planner.png" width="48%" alt="Gemini Natural Language Task Parser" />
-  <img src="screenshots/chatbot and mic.png" width="48%" alt="Interactive Co-pilot Sidebar" />
+  <img src="screenshots/chatbot and mic.png" width="48%" alt="Interactive Co-pilot Sidebar" /><br />
+  <em>Figure 2.1 (Left): Gemini Natural Language Parsing Interface (Task deconstruction displaying estimated cognitive load and parser confidence). Figure 2.2 (Right): Conversational "IQ Coach" Sidebar (Conversation-driven database writes and task scheduling execution).</em>
 </p>
 
 <p align="center">
   <img src="screenshots/taskcreation.png" width="48%" alt="Task Deconstruction and Subtask Builder" />
-  <img src="screenshots/taskbuilder.png" width="48%" alt="Task Builder Details" />
+  <img src="screenshots/taskbuilder.png" width="48%" alt="Task Builder Details" /><br />
+  <em>Figure 2.3 (Left): Task Deconstruction Modality (Hierarchical breakdown of complex deadlines). Figure 2.4 (Right): Subtask Parameter Builder (Manual config panel for task estimates and difficulty weight adjustments).</em>
 </p>
 
 ### Workload Forensics & Scheduling
@@ -39,13 +43,15 @@ Monitor routines, analyze procrastination logs to diagnose behavioral trends, an
 <p align="center">
   <img src="screenshots/tasks.png" width="32%" alt="Kanban Progress Board" />
   <img src="screenshots/calander.png" width="32%" alt="Borderless Calendar Grid" />
-  <img src="screenshots/insights.png" width="32%" alt="Procrastination Forensics" />
+  <img src="screenshots/insights.png" width="32%" alt="Procrastination Forensics" /><br />
+  <em>Figure 3.1 (Left): Kanban Task Board (Three-column task flow pipeline). Figure 3.2 (Center): Borderless Calendar Grid (VisionOS weekly calendar synced with Google Calendar). Figure 3.3 (Right): Behavioral Forensics (Analytics dashboard mapping procrastination fingerprint profiles and score trend forecasting).</em>
 </p>
 
 <p align="center">
   <img src="screenshots/habits.png" width="32%" alt="Habit Streak Tracker" />
   <img src="screenshots/extension.png" width="32%" alt="Chrome Extension Panel" />
-  <img src="screenshots/settings.png" width="32%" alt="Settings Configuration" />
+  <img src="screenshots/settings.png" width="32%" alt="Settings Configuration" /><br />
+  <em>Figure 4.1 (Left): Habit Streak Tracker (Circular progress routine tracking). Figure 4.2 (Center): Chrome Extension Companion (MV3 browser utility pushing web snippets directly to the cloud). Figure 4.3 (Right): Settings Panel (General controls for Gemini keys and user configuration preferences).</em>
 </p>
 
 ---
