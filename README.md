@@ -2,6 +2,8 @@
 
 **Live Application URL**: [https://deadlineiq-6321f.web.app](https://deadlineiq-6321f.web.app)
 
+🎬 **Watch the Interactive Video Demo**: Available directly on the landing page of the live hosted application!
+
 DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. Traditional productivity tools rely on passive push alerts that users easily ignore. DeadlineIQ introduces a proactive, spatial, and cognitive approach: it analyzes your behavioral patterns, predicts task completion risks using local machine learning, and orchestrates your focus windows directly around existing commitments.
 
 ---
