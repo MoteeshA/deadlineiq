@@ -4,6 +4,11 @@
 
 🎬 **Watch the Interactive Video Demo**: Available directly on the landing page of the live hosted application!
 
+<p align="center">
+  <img src="screenshots/taskgif.gif" width="100%" alt="Gemini Natural Language Task Upload Demo" /><br />
+  <em>Interactive Task Generation: Dictate a task in natural language, and Gemini automatically parses, schedules, and uploads it to Firestore in real time.</em>
+</p>
+
 DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. Traditional productivity tools rely on passive push alerts that users easily ignore. DeadlineIQ introduces a proactive, spatial, and cognitive approach: it analyzes your behavioral patterns, predicts task completion risks using local machine learning, and orchestrates your focus windows directly around existing commitments.
 
 ---
