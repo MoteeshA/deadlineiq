@@ -2,90 +2,51 @@
 
 **Live Application URL**: [https://deadlineiq-6321f.web.app](https://deadlineiq-6321f.web.app)
 
-DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. It analyzes user behavioral patterns, predicts task completion risks using local machine learning, and orchestrates focus windows directly around existing commitments.
+DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. Traditional productivity tools rely on passive push alerts that users easily ignore. DeadlineIQ introduces a proactive, spatial, and cognitive approach: it analyzes your behavioral patterns, predicts task completion risks using local machine learning, and orchestrates your focus windows directly around existing commitments.
 
 ---
 
-## Core Interface & Feature Walkthrough
+## User Interface & Features
 
-### 1. Spatial Telemetry Dashboard
-The primary dashboard serves as a central hub displaying active multi-agent status banners, floating telemetry modules, and real-time commitment progress.
-
-<p align="center">
-  <img src="screenshots/dashboard1.png" width="100%" alt="Primary Navigation HUD" />
-</p>
-
-### 2. Conversational Sidebar Agent
-Slide open the interactive "IQ Coach" sidebar to command, complete, or reschedule tasks. The co-pilot agent executes actions and commits updates to Firestore in real time.
+### Core Interface
+The main dashboard page features floating telemetry modules, active multi-agent status banners, and live task trackers styled in a premium VisionOS-inspired slate dark-mode.
 
 <p align="center">
-  <img src="screenshots/chatbot and mic.png" width="100%" alt="Interactive Co-pilot Sidebar" />
-</p>
-
-### 3. Borderless Calendar Grid
-The weekly calendar view maps task steps directly to empty calendar slots, positioning demanding tasks in Peak Focus Windows while avoiding existing Google Calendar meetings.
-
-<p align="center">
-  <img src="screenshots/calander.png" width="100%" alt="Weekly Calendar Grid" />
-</p>
-
-### 4. Behavioral Forensics & Score Forecasting
-Analyze rescheduling logs to diagnose your procrastination fingerprint (e.g., *Fear of Failure* or *Task Ambiguity*) and review score trend forecasts.
-
-<p align="center">
-  <img src="screenshots/insights.png" width="100%" alt="Behavioral Forensics Dashboard" />
-</p>
-
----
-
-<details>
-<summary>🔍 Click to view additional interface screens (Neural Net, Task Creation, Habit Tracker, and Chrome Extension)</summary>
-
-### Local Neural Network Risk Model
-<p align="center">
-  <img src="screenshots/dashboard2.png" width="80%" alt="Local Neural Net Risk" />
-</p>
-
-### Capacity Mapping and Task Actions
-<p align="center">
-  <img src="screenshots/dashboard3.png" width="80%" alt="Capacity Mapping" />
-</p>
-
-### Natural Language Task Parser
-<p align="center">
-  <img src="screenshots/gemini AI planner.png" width="80%" alt="Gemini AI Planner" />
-</p>
-
-### Task Deconstruction & Details
-<p align="center">
-  <img src="screenshots/taskcreation.png" width="80%" alt="Subtask Builder" />
+  <img src="screenshots/dashboard1.png" width="90%" alt="Primary Navigation HUD" />
 </p>
 
 <p align="center">
-  <img src="screenshots/taskbuilder.png" width="80%" alt="Task Builder Details" />
+  <img src="screenshots/dashboard2.png" width="48%" alt="Local Neural Network Risk Model" />
+  <img src="screenshots/dashboard3.png" width="48%" alt="Capacity Mapping and Nudges" />
 </p>
 
-### Kanban Progress Board
+### Natural Language Scheduling & AI Co-pilot
+Dictate tasks using the Web Speech API. Gemini automatically parses messy text into structured tasks, subtasks, and confidence scores. Use the sliding sidebar chat to command, complete, or reschedule tasks.
+
 <p align="center">
-  <img src="screenshots/tasks.png" width="80%" alt="Kanban Board" />
+  <img src="screenshots/gemini AI planner.png" width="48%" alt="Gemini Natural Language Task Parser" />
+  <img src="screenshots/chatbot and mic.png" width="48%" alt="Interactive Co-pilot Sidebar" />
 </p>
 
-### Habit Streak Tracker
 <p align="center">
-  <img src="screenshots/habits.png" width="80%" alt="Habits Tracker" />
+  <img src="screenshots/taskcreation.png" width="48%" alt="Task Deconstruction and Subtask Builder" />
+  <img src="screenshots/taskbuilder.png" width="48%" alt="Task Builder Details" />
 </p>
 
-### Chrome Extension Utility
+### Workload Forensics & Scheduling
+Monitor routines, analyze procrastination logs to diagnose behavioral trends, and view schedules in a weekly grid integrated with Google Calendar.
+
 <p align="center">
-  <img src="screenshots/extension.png" width="80%" alt="Chrome Extension" />
+  <img src="screenshots/tasks.png" width="32%" alt="Kanban Progress Board" />
+  <img src="screenshots/calander.png" width="32%" alt="Borderless Calendar Grid" />
+  <img src="screenshots/insights.png" width="32%" alt="Procrastination Forensics" />
 </p>
 
-### Settings Panel
 <p align="center">
-  <img src="screenshots/settings.png" width="80%" alt="Settings Panel" />
+  <img src="screenshots/habits.png" width="32%" alt="Habit Streak Tracker" />
+  <img src="screenshots/extension.png" width="32%" alt="Chrome Extension Panel" />
+  <img src="screenshots/settings.png" width="32%" alt="Settings Configuration" />
 </p>
-
-</details>
 
 ---
 
