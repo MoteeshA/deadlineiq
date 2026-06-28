@@ -263,23 +263,9 @@ The main dashboard is the command centre of DeadlineIQ. It surfaces live task me
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard1.png}
-    \caption{Dashboard — initial state}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
-    \caption{Dashboard — active task view}
-  \end{subfigure}
+  \includegraphics[width=0.9\linewidth]{screenshots/dashboard1.png}
   \caption{Primary Navigation HUD showing floating telemetry modules and live task tracker}
   \label{fig:dashboard}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\linewidth]{screenshots/dashboard3.png}
-  \caption{Dashboard — expanded metric overlay}
 \end{figure}
 
 \begin{tcolorbox}[featurebox]
@@ -299,31 +285,9 @@ An integrated client-side neural net assesses active task parameters in real tim
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
-    \caption{Risk model — baseline assessment}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
-    \caption{Risk model — elevated risk alert}
-  \end{subfigure}
-  \caption{Local MLP Neural Network Risk Model panel}
+  \includegraphics[width=0.9\linewidth]{screenshots/dashboard2.png}
+  \caption{Local MLP Neural Network Risk Model Widget displaying real-time task completion probability.}
   \label{fig:riskmodel}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
-    \caption{Risk factor breakdown}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
-    \caption{Score trend visualisation}
-  \end{subfigure}
-  \caption{Neural network risk score detail views}
 \end{figure}
 
 % ─── Section 2.3 ────────────────────────────────────────────────────────────
@@ -333,16 +297,8 @@ This module displays floating telemetry panels indicating current focus scores, 
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard3.png}
-    \caption{Capacity map — focus allocation}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/dashboard3.png}
-    \caption{Capacity map — nudge panel}
-  \end{subfigure}
-  \caption{Capacity Mapping and Focus Nudge module}
+  \includegraphics[width=0.9\linewidth]{screenshots/dashboard3.png}
+  \caption{Capacity Mapping and Focus Nudge module showing available workload capacity.}
   \label{fig:capacity}
 \end{figure}
 
@@ -353,16 +309,8 @@ An automated schedule deconstruction module. Gemini 2.5 Flash parses the voice o
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/gemini AI planner.png}
-    \caption{Task input — voice/text entry}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/gemini AI planner.png}
-    \caption{Parsed task output with confidence score}
-  \end{subfigure}
-  \caption{Gemini NL Task Parser — input to structured task conversion}
+  \includegraphics[width=0.9\linewidth]{screenshots/gemini AI planner.png}
+  \caption{Gemini NL Task Parser showing text-to-task deconstruction and semantic structure evaluation.}
   \label{fig:geminiparser}
 \end{figure}
 
@@ -386,30 +334,9 @@ A sliding AI sidebar where users can naturally command, reschedule, and complete
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
-    \caption{IQ Coach — conversation view}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
-    \caption{IQ Coach — executing a reschedule}
-  \end{subfigure}
-  \caption{IQ Coach Co-pilot Sidebar — agentic task management}
+  \includegraphics[width=0.85\linewidth]{screenshots/chatbot and mic.png}
+  \caption{IQ Coach Co-pilot Sidebar executing conversation-driven database writes and scheduling.}
   \label{fig:iqcoach}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
-    \caption{IQ Coach — Firestore commit confirmation}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
-    \caption{IQ Coach — action history log}
-  \end{subfigure}
 \end{figure}
 
 % ─── Section 2.6 ────────────────────────────────────────────────────────────
@@ -421,21 +348,15 @@ Gemini automatically decomposes complex deadlines into discrete actionable subta
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
     \includegraphics[width=\linewidth]{screenshots/taskcreation.png}
-    \caption{Subtask builder — auto-generated breakdown}
+    \caption{Task Deconstruction Modality}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
     \includegraphics[width=\linewidth]{screenshots/taskbuilder.png}
-    \caption{Subtask builder — edit and reorder}
+    \caption{Subtask Parameter Builder}
   \end{subfigure}
-  \caption{Task Deconstruction and Subtask Builder}
+  \caption{Task Deconstruction and Subtask Builder interfaces}
   \label{fig:subtasks}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\linewidth]{screenshots/taskbuilder.png}
-  \caption{Subtask completion progress tracker}
 \end{figure}
 
 % ─── Section 2.7 ────────────────────────────────────────────────────────────
@@ -445,15 +366,7 @@ A drag-and-drop board for tracking commitments across progress columns. Audio ch
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/tasks.png}
-    \caption{Kanban — three-column overview}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/tasks.png}
-    \caption{Kanban — card drag in progress}
-  \end{subfigure}
+  \includegraphics[width=0.9\linewidth]{screenshots/tasks.png}
   \caption{Kanban Progress Board with columns: \textit{Due Today}, \textit{In Progress}, \textit{Completed}}
   \label{fig:kanban}
 \end{figure}
@@ -465,15 +378,7 @@ An edge-to-edge borderless weekly calendar that overlays tasks alongside Google 
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/calander.png}
-    \caption{Calendar — weekly task overlay}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/calander.png}
-    \caption{Calendar — Peak Focus Window highlights}
-  \end{subfigure}
+  \includegraphics[width=0.9\linewidth]{screenshots/calander.png}
   \caption{Glassmorphic VisionOS Calendar Grid with Google Calendar sync}
   \label{fig:calendar}
 \end{figure}
@@ -485,30 +390,9 @@ This analytics module catalogues behavioural delay patterns to identify the user
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/insights.png}
-    \caption{Forensics — behavioural pattern analysis}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/insights.png}
-    \caption{Forensics — score forecast chart}
-  \end{subfigure}
+  \includegraphics[width=0.9\linewidth]{screenshots/insights.png}
   \caption{Procrastination Forensics and Predictive Score Dashboard}
   \label{fig:forensics}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/insights.png}
-    \caption{Pattern type classification}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/insights.png}
-    \caption{Intervention recommendations}
-  \end{subfigure}
 \end{figure}
 
 % ─── Section 2.10 ───────────────────────────────────────────────────────────
@@ -518,30 +402,9 @@ Monitors routine completions with glowing circular progress gauges and integrate
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/habits.png}
-    \caption{Habit tracker — streak overview}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/habits.png}
-    \caption{Habit tracker — success probability forecast}
-  \end{subfigure}
+  \includegraphics[width=0.9\linewidth]{screenshots/habits.png}
   \caption{Habit Streak Tracker with circular progress gauges}
   \label{fig:habits}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/habits.png}
-    \caption{Habit detail and edit view}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/habits.png}
-    \caption{Streak milestone celebration}
-  \end{subfigure}
 \end{figure}
 
 % ─── Section 2.11 ───────────────────────────────────────────────────────────
@@ -551,15 +414,7 @@ The companion Chrome extension synchronises web research tabs, captures snippets
 
 \begin{figure}[H]
   \centering
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/extension.png}
-    \caption{Extension popup — task capture}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{screenshots/extension.png}
-    \caption{Extension popup — sync confirmation}
-  \end{subfigure}
+  \includegraphics[width=0.75\linewidth]{screenshots/extension.png}
   \caption{Chrome Extension Panel — browser-to-dashboard task pipeline}
   \label{fig:extension}
 \end{figure}
@@ -806,6 +661,7 @@ VITE_FIREBASE_APP_ID=your_firebase_app_id
 
 \begin{tcolorbox}[infobox, title={Tip — Gemini API Key}]
 The Gemini Developer API Key can be entered directly in the web UI under \textbf{Settings $\rightarrow$ API Configuration}, so you do not need to add it to the \texttt{.env} file.
+\\
 \end{tcolorbox}
 
 \subsection{Step 3 — Start the Development Server}
