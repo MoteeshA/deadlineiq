@@ -1,79 +1,56 @@
-# 🧠 DeadlineIQ: Cognitive-Load AI Task Planner & Focus Companion
+# DeadlineIQ: Cognitive-Load AI Task Planner & Focus Companion
 
-🚀 **Live Deployed Application (Google Cloud)**: [https://deadlineiq-6321f.web.app](https://deadlineiq-6321f.web.app)
+**Live Application URL**: [https://deadlineiq-6321f.web.app](https://deadlineiq-6321f.web.app)
 
-**DeadlineIQ** is an ultra-premium, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. Traditional productivity tools rely on passive push alerts that users easily ignore. DeadlineIQ introduces a proactive, spatial, and cognitive approach: it analyzes your behavioral patterns, predicts task completion risks using local machine learning, and orchestrates your focus windows directly around existing commitments.
+DeadlineIQ is a proactive, AI-driven productivity companion designed to defeat procrastination and optimize cognitive focus. Traditional productivity tools rely on passive push alerts that users easily ignore. DeadlineIQ introduces a proactive, spatial, and cognitive approach: it analyzes your behavioral patterns, predicts task completion risks using local machine learning, and orchestrates your focus windows directly around existing commitments.
 
 ---
 
-## 🌟 Immersive Spatial User Interface Tour
+## User Interface & Features
 
-Here is a visual walkthrough of the custom spatial screens and AI modules built into DeadlineIQ:
-
-### 1. Spatial Computing Telemetry Dashboards
-
-#### 🖥️ Primary Navigation HUD
+### Core Interface
 The main dashboard page features floating telemetry modules, active multi-agent status banners, and live task trackers styled in a premium VisionOS-inspired slate dark-mode.
-![Primary Navigation HUD](screenshots/dashboard1.png)
 
-#### 🛡️ Local Neural Network Risk Model
-An integrated client-side neural net assesses active task parameters in real time to calculate a personalized procrastination probability score.
-![Local Neural Network Risk Model](screenshots/dashboard2.png)
+<p align="center">
+  <img src="screenshots/dashboard1.png" width="90%" alt="Primary Navigation HUD" />
+</p>
 
-#### 🕒 Capacity mapping and Nudges
-Features floating telemetry modules indicating focus scores, active priority hours, and audio controls.
-![Capacity mapping and Nudges](screenshots/dashboard3.png)
+<p align="center">
+  <img src="screenshots/dashboard2.png" width="48%" alt="Local Neural Network Risk Model" />
+  <img src="screenshots/dashboard3.png" width="48%" alt="Capacity Mapping and Nudges" />
+</p>
 
----
+### Natural Language Scheduling & AI Co-pilot
+Dictate tasks using the Web Speech API. Gemini automatically parses messy text (e.g., *"Finish presentation slides by tomorrow at 4 PM, high priority, will take 3h"*) into structured tasks, subtasks, and confidence scores. Use the sliding sidebar chat to command, complete, or reschedule tasks.
 
-### 2. Conversational & Agentic Planning
+<p align="center">
+  <img src="screenshots/gemini AI planner.png" width="48%" alt="Gemini Natural Language Task Parser" />
+  <img src="screenshots/chatbot and mic.png" width="48%" alt="Interactive Co-pilot Sidebar" />
+</p>
 
-#### 🎙️ Gemini Natural Language Task Parser
-Dictate chaotic schedules (e.g., *"Finish presentation slides by tomorrow at 4 PM, high priority, will take 3h"*). Gemini parses them automatically, estimating cognitive load metrics and establishing confidence scores.
-![Gemini Natural Language Task Parser](screenshots/gemini%20AI%20planner.png)
+<p align="center">
+  <img src="screenshots/taskcreation.png" width="48%" alt="Task Deconstruction and Subtask Builder" />
+  <img src="screenshots/taskbuilder.png" width="48%" alt="Task Builder Details" />
+</p>
 
-#### 💬 Interactive Co-pilot ("IQ Coach") Sidebar
-Sliding sidebar chat where you can naturally command, complete, or reschedule tasks. The AI agent executes actions and commits updates to Firestore in real time.
-![Interactive Co-pilot Sidebar](screenshots/chatbot%20and%20mic.png)
+### Workload Forensics & Scheduling
+Monitor routines, analyze procrastination logs to diagnose behavioral trends, and view schedules in a weekly grid integrated with Google Calendar.
 
-#### 📋 Task Deconstruction and Subtask Builder
-Gemini automatically breaks down complex deadlines into discrete actions, allowing you to edit subtask parameters, estimated times, and track incremental completion.
-![Task Deconstruction and Subtask Builder](screenshots/taskcreation.png)
-![Task Builder Details](screenshots/taskbuilder.png)
+<p align="center">
+  <img src="screenshots/tasks.png" width="32%" alt="Kanban Progress Board" />
+  <img src="screenshots/calander.png" width="32%" alt="Borderless Calendar Grid" />
+  <img src="screenshots/insights.png" width="32%" alt="Procrastination Forensics" />
+</p>
 
----
-
-### 3. Workload Orchestration & Forensics
-
-#### 📊 Kanban Progress Board
-Drag and track your commitments across progress columns (Due Today, In Progress, Completed), triggering chimes on completion.
-![Kanban Progress Board](screenshots/tasks.png)
-
-#### 📅 Glassmorphic VisionOS Calendar Grid
-An borderless, edge-to-edge weekly view displaying tasks alongside Google Calendar events, optimizing slots based on Peak Focus Windows.
-![Borderless Calendar Grid](screenshots/calander.png)
-
-#### 🔍 Procrastination Forensics & Score Forecasting
-Recalculates behavioral delays to catalog your procrastination fingerprint (e.g., *Fear of Failure* or *Task Ambiguity*) and charts predictive score trends using SVGs.
-![Procrastination Forensics](screenshots/insights.png)
-
-#### 🔄 Habit Streak routines Tracker
-Monitors routine completions with glowing circular progress gauges and fetches Gemini success probability forecasts.
-![Habit Streak Tracker](screenshots/habits.png)
-
-#### 🧩 Chrome Extension Panel
-Synchronize web browsing tabs, capture research snippets, and push tasks directly to your DeadlineIQ cloud dashboard.
-![Chrome Extension Panel](screenshots/extension.png)
-
-#### ⚙️ Settings and API Keys Config
-Easily configure custom Gemini Developer API keys and personal preference settings.
-![Settings Config](screenshots/settings.png)
+<p align="center">
+  <img src="screenshots/habits.png" width="32%" alt="Habit Streak Tracker" />
+  <img src="screenshots/extension.png" width="32%" alt="Chrome Extension Panel" />
+  <img src="screenshots/settings.png" width="32%" alt="Settings Configuration" />
+</p>
 
 ---
 
-## 🛠️ Google Technologies Stack (7 Core Integrations)
-
-DeadlineIQ leverages **7 Google Cloud, Firebase, and Workspace technologies** to power its logic and cloud infrastructure:
+## Google Technologies Stack
 
 1. **Google Firebase Authentication**: Provides secure, seamless Google OAuth identity management and session validation.
 2. **Google Cloud Firestore**: Real-time NoSQL database storing user profiles, task documents, calendar slots, and behavioral metrics under isolated document references.
@@ -85,7 +62,7 @@ DeadlineIQ leverages **7 Google Cloud, Firebase, and Workspace technologies** to
 
 ---
 
-## 🏗️ Technical Architecture
+## Technical Architecture
 
 - **Front-End**: React 18, Vite, Tailwind CSS (Glassmorphism, custom transitions, responsive layout).
 - **Security Rules**: Production `firestore.rules` enforcing authenticated-owner-only reads/writes on all collection paths:
@@ -104,7 +81,7 @@ DeadlineIQ leverages **7 Google Cloud, Firebase, and Workspace technologies** to
 
 ---
 
-## 💻 Local Setup Guide
+## Local Setup Guide
 
 ### 1. Prerequisites
 Ensure you have **Node.js (v18 or v20)** and **npm** installed.
@@ -138,7 +115,7 @@ Open [http://localhost:5174](http://localhost:5174) in your browser to view the 
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 To build and run the application locally using Docker:
 
@@ -153,7 +130,7 @@ Access the served app at [http://localhost:8080](http://localhost:8080).
 
 ---
 
-## 🚀 Google Cloud / Firebase Deployment
+## Firebase Deployment
 
 To deploy to Firebase Hosting:
 ```bash
