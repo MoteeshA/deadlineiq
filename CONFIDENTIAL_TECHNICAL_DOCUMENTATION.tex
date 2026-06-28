@@ -27,7 +27,7 @@
 \usepackage{tabularx}
 
 \tcbuselibrary{skins, breakable}
-\usetikzlibrary{arrows.meta, positioning, shapes.rounded}
+\usetikzlibrary{arrows.meta, positioning, shapes.misc}
 
 % ─── Colour Palette ─────────────────────────────────────────────────────────
 \definecolor{primary}{HTML}{1E293B}
@@ -264,12 +264,12 @@ The main dashboard is the command centre of DeadlineIQ. It surfaces live task me
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-001.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard1.png}
     \caption{Dashboard — initial state}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-002.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
     \caption{Dashboard — active task view}
   \end{subfigure}
   \caption{Primary Navigation HUD showing floating telemetry modules and live task tracker}
@@ -278,7 +278,7 @@ The main dashboard is the command centre of DeadlineIQ. It surfaces live task me
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\linewidth]{ezgif-frame-003.jpg}
+  \includegraphics[width=0.7\linewidth]{screenshots/dashboard3.png}
   \caption{Dashboard — expanded metric overlay}
 \end{figure}
 
@@ -300,12 +300,12 @@ An integrated client-side neural net assesses active task parameters in real tim
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-014.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
     \caption{Risk model — baseline assessment}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-015.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
     \caption{Risk model — elevated risk alert}
   \end{subfigure}
   \caption{Local MLP Neural Network Risk Model panel}
@@ -315,12 +315,12 @@ An integrated client-side neural net assesses active task parameters in real tim
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-016.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
     \caption{Risk factor breakdown}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-017.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard2.png}
     \caption{Score trend visualisation}
   \end{subfigure}
   \caption{Neural network risk score detail views}
@@ -334,12 +334,12 @@ This module displays floating telemetry panels indicating current focus scores, 
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-028.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard3.png}
     \caption{Capacity map — focus allocation}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-029.jpg}
+    \includegraphics[width=\linewidth]{screenshots/dashboard3.png}
     \caption{Capacity map — nudge panel}
   \end{subfigure}
   \caption{Capacity Mapping and Focus Nudge module}
@@ -349,17 +349,17 @@ This module displays floating telemetry panels indicating current focus scores, 
 % ─── Section 2.4 ────────────────────────────────────────────────────────────
 \section{Gemini Natural Language Task Parser}
 
-Users dictate complex schedules in plain English. Gemini 2.5 Flash parses the input, extracts structured task objects, and estimates cognitive load metrics and confidence scores automatically.
+An automated schedule deconstruction module. Gemini 2.5 Flash parses the voice or text input, extracts structured task objects, and estimates cognitive load metrics and confidence scores automatically.
 
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-148.jpg}
+    \includegraphics[width=\linewidth]{screenshots/gemini AI planner.png}
     \caption{Task input — voice/text entry}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-149.jpg}
+    \includegraphics[width=\linewidth]{screenshots/gemini AI planner.png}
     \caption{Parsed task output with confidence score}
   \end{subfigure}
   \caption{Gemini NL Task Parser — input to structured task conversion}
@@ -387,12 +387,12 @@ A sliding AI sidebar where users can naturally command, reschedule, and complete
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-159.jpg}
+    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
     \caption{IQ Coach — conversation view}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-160.jpg}
+    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
     \caption{IQ Coach — executing a reschedule}
   \end{subfigure}
   \caption{IQ Coach Co-pilot Sidebar — agentic task management}
@@ -402,12 +402,12 @@ A sliding AI sidebar where users can naturally command, reschedule, and complete
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-161.jpg}
+    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
     \caption{IQ Coach — Firestore commit confirmation}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-162.jpg}
+    \includegraphics[width=\linewidth]{screenshots/chatbot and mic.png}
     \caption{IQ Coach — action history log}
   \end{subfigure}
 \end{figure}
@@ -420,12 +420,12 @@ Gemini automatically decomposes complex deadlines into discrete actionable subta
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-163.jpg}
+    \includegraphics[width=\linewidth]{screenshots/taskcreation.png}
     \caption{Subtask builder — auto-generated breakdown}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-174.jpg}
+    \includegraphics[width=\linewidth]{screenshots/taskbuilder.png}
     \caption{Subtask builder — edit and reorder}
   \end{subfigure}
   \caption{Task Deconstruction and Subtask Builder}
@@ -434,7 +434,7 @@ Gemini automatically decomposes complex deadlines into discrete actionable subta
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.7\linewidth]{ezgif-frame-175.jpg}
+  \includegraphics[width=0.7\linewidth]{screenshots/taskbuilder.png}
   \caption{Subtask completion progress tracker}
 \end{figure}
 
@@ -446,12 +446,12 @@ A drag-and-drop board for tracking commitments across progress columns. Audio ch
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-176.jpg}
+    \includegraphics[width=\linewidth]{screenshots/tasks.png}
     \caption{Kanban — three-column overview}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-177.jpg}
+    \includegraphics[width=\linewidth]{screenshots/tasks.png}
     \caption{Kanban — card drag in progress}
   \end{subfigure}
   \caption{Kanban Progress Board with columns: \textit{Due Today}, \textit{In Progress}, \textit{Completed}}
@@ -466,12 +466,12 @@ An edge-to-edge borderless weekly calendar that overlays tasks alongside Google 
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-188.jpg}
+    \includegraphics[width=\linewidth]{screenshots/calander.png}
     \caption{Calendar — weekly task overlay}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-189.jpg}
+    \includegraphics[width=\linewidth]{screenshots/calander.png}
     \caption{Calendar — Peak Focus Window highlights}
   \end{subfigure}
   \caption{Glassmorphic VisionOS Calendar Grid with Google Calendar sync}
@@ -486,12 +486,12 @@ This analytics module catalogues behavioural delay patterns to identify the user
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-200.jpg}
+    \includegraphics[width=\linewidth]{screenshots/insights.png}
     \caption{Forensics — behavioural pattern analysis}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-201.jpg}
+    \includegraphics[width=\linewidth]{screenshots/insights.png}
     \caption{Forensics — score forecast chart}
   \end{subfigure}
   \caption{Procrastination Forensics and Predictive Score Dashboard}
@@ -501,12 +501,12 @@ This analytics module catalogues behavioural delay patterns to identify the user
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-202.jpg}
+    \includegraphics[width=\linewidth]{screenshots/insights.png}
     \caption{Pattern type classification}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-203.jpg}
+    \includegraphics[width=\linewidth]{screenshots/insights.png}
     \caption{Intervention recommendations}
   \end{subfigure}
 \end{figure}
@@ -519,12 +519,12 @@ Monitors routine completions with glowing circular progress gauges and integrate
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-214.jpg}
+    \includegraphics[width=\linewidth]{screenshots/habits.png}
     \caption{Habit tracker — streak overview}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-215.jpg}
+    \includegraphics[width=\linewidth]{screenshots/habits.png}
     \caption{Habit tracker — success probability forecast}
   \end{subfigure}
   \caption{Habit Streak Tracker with circular progress gauges}
@@ -534,12 +534,12 @@ Monitors routine completions with glowing circular progress gauges and integrate
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-216.jpg}
+    \includegraphics[width=\linewidth]{screenshots/habits.png}
     \caption{Habit detail and edit view}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-217.jpg}
+    \includegraphics[width=\linewidth]{screenshots/habits.png}
     \caption{Streak milestone celebration}
   \end{subfigure}
 \end{figure}
@@ -552,12 +552,12 @@ The companion Chrome extension synchronises web research tabs, captures snippets
 \begin{figure}[H]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-228.jpg}
+    \includegraphics[width=\linewidth]{screenshots/extension.png}
     \caption{Extension popup — task capture}
   \end{subfigure}
   \hfill
   \begin{subfigure}[t]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{ezgif-frame-229.jpg}
+    \includegraphics[width=\linewidth]{screenshots/extension.png}
     \caption{Extension popup — sync confirmation}
   \end{subfigure}
   \caption{Chrome Extension Panel — browser-to-dashboard task pipeline}
