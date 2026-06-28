@@ -1,0 +1,927 @@
+\documentclass[12pt,a4paper]{report}
+
+% ─── Core Packages ──────────────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.8cm,right=2.8cm]{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tcolorbox}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{tikz}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{mdframed}
+\usepackage{tabularx}
+
+\tcbuselibrary{skins, breakable}
+\usetikzlibrary{arrows.meta, positioning, shapes.rounded}
+
+% ─── Colour Palette ─────────────────────────────────────────────────────────
+\definecolor{primary}{HTML}{1E293B}
+\definecolor{accent}{HTML}{6366F1}
+\definecolor{accentlight}{HTML}{EEF2FF}
+\definecolor{accentdark}{HTML}{4338CA}
+\definecolor{muted}{HTML}{64748B}
+\definecolor{codebase}{HTML}{0F172A}
+\definecolor{codekw}{HTML}{818CF8}
+\definecolor{codestr}{HTML}{34D399}
+\definecolor{codecomment}{HTML}{94A3B8}
+\definecolor{success}{HTML}{10B981}
+\definecolor{warning}{HTML}{F59E0B}
+\definecolor{danger}{HTML}{EF4444}
+\definecolor{lightgray}{HTML}{F8FAFC}
+\definecolor{bordergray}{HTML}{E2E8F0}
+
+% ─── Hyperref ───────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accent,
+  urlcolor=accentdark,
+  citecolor=accent,
+  pdftitle={DeadlineIQ — Technical Documentation},
+  pdfauthor={Moteesh A},
+  pdfsubject={AI-Powered Cognitive Task Planner},
+}
+
+% ─── Line Spacing ───────────────────────────────────────────────────────────
+\setstretch{1.2}
+
+% ─── Chapter / Section Styles ───────────────────────────────────────────────
+\titleformat{\chapter}[display]
+  {\color{primary}\LARGE\bfseries}
+  {\color{accent}\normalsize\bfseries\MakeUppercase{\chaptertitlename}\ \thechapter}
+  {6pt}{}[\vspace{4pt}\color{accent}\rule{\linewidth}{1.5pt}]
+
+\titleformat{\section}
+  {\color{primary}\large\bfseries}
+  {\color{accent}\thesection}{0.7em}{}
+
+\titleformat{\subsection}
+  {\color{primary}\normalsize\bfseries}
+  {\color{muted}\thesubsection}{0.6em}{}
+
+\titleformat{\subsubsection}
+  {\color{muted}\normalsize\bfseries\itshape}
+  {}{0em}{}
+
+\titlespacing{\chapter}{0pt}{-10pt}{16pt}
+\titlespacing{\section}{0pt}{16pt}{5pt}
+\titlespacing{\subsection}{0pt}{10pt}{3pt}
+
+% ─── Header / Footer ────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{muted}\textit{DeadlineIQ — Technical Documentation}}
+\fancyhead[R]{\small\color{muted}\textit{\leftmark}}
+\fancyfoot[C]{\color{muted}\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ─── Code Listings ──────────────────────────────────────────────────────────
+\lstdefinestyle{codestyle}{
+  backgroundcolor=\color{codebase},
+  basicstyle=\ttfamily\footnotesize\color{white},
+  keywordstyle=\color{codekw}\bfseries,
+  stringstyle=\color{codestr},
+  commentstyle=\color{codecomment}\itshape,
+  breaklines=true,
+  frame=none,
+  xleftmargin=12pt,
+  xrightmargin=8pt,
+  aboveskip=6pt,
+  belowskip=6pt,
+  showstringspaces=false,
+  numbers=left,
+  numberstyle=\tiny\color{muted},
+  numbersep=8pt,
+}
+\lstset{style=codestyle}
+
+% ─── Custom Boxes ───────────────────────────────────────────────────────────
+\tcbset{
+  infobox/.style={
+    enhanced, breakable,
+    colback=accentlight, colframe=accent,
+    arc=5pt, boxrule=1pt,
+    left=10pt, right=10pt, top=7pt, bottom=7pt,
+    fonttitle=\bfseries\color{accent},
+    attach boxed title to top left={yshift=-2mm, xshift=6mm},
+    boxed title style={colback=accent, arc=3pt},
+    coltitle=white,
+  },
+  warningbox/.style={
+    enhanced,
+    colback=yellow!10, colframe=warning,
+    arc=5pt, boxrule=1pt,
+    left=10pt, right=10pt, top=7pt, bottom=7pt,
+    fonttitle=\bfseries\color{warning},
+    attach boxed title to top left={yshift=-2mm, xshift=6mm},
+    boxed title style={colback=warning, arc=3pt},
+    coltitle=white,
+  },
+  codebox/.style={
+    enhanced, breakable,
+    colback=codebase, colframe=accent!35,
+    arc=5pt, boxrule=0.8pt,
+    left=3pt, right=3pt, top=3pt, bottom=3pt,
+  },
+  featurebox/.style={
+    enhanced,
+    colback=lightgray, colframe=bordergray,
+    arc=5pt, boxrule=0.6pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt,
+  },
+}
+
+% ─── Image helper ───────────────────────────────────────────────────────────
+\newcommand{\uiscreen}[3]{%
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=#2\linewidth,
+                     frame,
+                     cfbox=bordergray 0.6pt 0pt]{#1}
+    \caption{#3}
+  \end{figure}%
+}
+
+% ════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ─── Title Page ─────────────────────────────────────────────────────────────
+\begin{titlepage}
+\pagecolor{primary}
+\color{white}
+\vspace*{2.5cm}
+
+\begin{center}
+  \begin{tikzpicture}
+    \draw[accent, line width=2pt] (0,0) -- (14,0);
+  \end{tikzpicture}
+
+  \vspace{1.2cm}
+  {\fontsize{48}{56}\selectfont\bfseries\color{white} DeadlineIQ}
+
+  \vspace{0.5cm}
+  {\large\color{accentlight} Cognitive-Load AI Task Planner \& Focus Companion}
+
+  \vspace{0.3cm}
+  \begin{tikzpicture}
+    \draw[accent, line width=1pt] (0,0) -- (8,0);
+  \end{tikzpicture}
+
+  \vspace{1.8cm}
+  {\large\color{white} Technical Documentation}
+
+  \vspace{0.4cm}
+  {\color{muted} Version 1.0 \quad\textbullet\quad June 2026}
+
+  \vspace{0.3cm}
+  {\color{muted} Author:\ \textbf{Moteesh A}}
+
+  \vspace{2.8cm}
+
+  % Tag badges drawn with tikz
+  \begin{tikzpicture}
+    \node[fill=accent, text=white, rounded corners=4pt,
+          inner xsep=10pt, inner ysep=5pt,
+          font=\small\bfseries] at (0,0) {AI-Powered};
+    \node[fill=success, text=white, rounded corners=4pt,
+          inner xsep=10pt, inner ysep=5pt,
+          font=\small\bfseries] at (3.2,0) {Firebase};
+    \node[fill=warning, text=white, rounded corners=4pt,
+          inner xsep=10pt, inner ysep=5pt,
+          font=\small\bfseries] at (6.2,0) {Gemini 2.5};
+    \node[fill=danger, text=white, rounded corners=4pt,
+          inner xsep=10pt, inner ysep=5pt,
+          font=\small\bfseries] at (9.2,0) {React 18};
+  \end{tikzpicture}
+
+  \vspace{2.8cm}
+  \begin{tikzpicture}
+    \draw[accent, line width=2pt] (0,0) -- (14,0);
+  \end{tikzpicture}
+  \vspace{0.3cm}
+
+  {\small\color{muted} DeadlineIQ Engineering \quad|\quad Confidential}
+\end{center}
+\end{titlepage}
+\nopagecolor
+
+% ─── Table of Contents ──────────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Product Overview}
+\label{ch:overview}
+
+\section{Introduction}
+
+\textbf{DeadlineIQ} is an ultra-premium, AI-driven productivity companion engineered to defeat procrastination and optimise cognitive focus. Unlike conventional productivity tools that rely on passive push alerts — which users habitually ignore — DeadlineIQ introduces a \textit{proactive, spatial, and cognitively aware} approach to task management.
+
+The system analyses behavioural patterns in real time, predicts task-completion risks using a client-side machine learning model, and orchestrates personalised focus windows directly around the user's existing calendar commitments.
+
+\begin{tcolorbox}[infobox, title={Core Value Proposition}]
+DeadlineIQ replaces reactive reminders with \textbf{predictive intelligence} — it intervenes before deadlines are missed, not after. Every feature is designed to reduce cognitive load, not add to it.
+\end{tcolorbox}
+
+\section{Key Capabilities}
+
+\begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}, itemsep=6pt]
+  \item \textbf{Local Neural Network Risk Scoring} — A client-side Multi-Layer Perceptron (MLP) computes personalised procrastination probability scores without transmitting sensitive data to external servers.
+  \item \textbf{Natural Language Task Parsing} — Powered by \textit{Gemini 2.5 Flash}, users dictate chaotic schedules in plain English and receive structured task objects with cognitive-load estimates and confidence scores.
+  \item \textbf{Calendar-Aware Focus Scheduling} — Deep integration with the Google Calendar API allocates focus windows around existing commitments and peak-productivity periods.
+  \item \textbf{Procrastination Forensics} — Recalculates behavioural delays to identify and categorise procrastination root causes (e.g., \textit{Fear of Failure}, \textit{Task Ambiguity}) with SVG trend charts.
+  \item \textbf{Agentic Co-pilot (IQ Coach)} — A sliding sidebar AI agent executes scheduling actions, reschedules tasks, and commits all updates to Firestore in real time.
+  \item \textbf{Habit Streak Tracking} — Glowing circular gauges monitor routine completions with Gemini-powered success probability forecasts.
+  \item \textbf{Chrome Extension Integration} — Synchronises browser research directly to the cloud task dashboard without context-switching.
+\end{enumerate}
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{User Interface Walkthrough}
+\label{ch:ui}
+
+DeadlineIQ's UI is built on a \textbf{VisionOS-inspired spatial design language} — floating telemetry modules, glassmorphic panels, and a premium dark-mode slate palette that minimises distraction while maximising information density.
+
+% ─── Section 2.1 ────────────────────────────────────────────────────────────
+\section{Primary Navigation HUD (Dashboard)}
+
+The main dashboard is the command centre of DeadlineIQ. It surfaces live task metrics, multi-agent status, and focus-window data through floating telemetry panels.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-001.jpg}
+    \caption{Dashboard — initial state}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-002.jpg}
+    \caption{Dashboard — active task view}
+  \end{subfigure}
+  \caption{Primary Navigation HUD showing floating telemetry modules and live task tracker}
+  \label{fig:dashboard}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{ezgif-frame-003.jpg}
+  \caption{Dashboard — expanded metric overlay}
+\end{figure}
+
+\begin{tcolorbox}[featurebox]
+\textbf{Key UI Elements:}
+\begin{itemize}[noitemsep, topsep=3pt]
+  \item Floating telemetry cards with live task counts and urgency indicators
+  \item Multi-agent status banner showing active AI operations
+  \item Focus score ring and daily priority hour counter
+  \item One-tap access to all feature modules via the sidebar rail
+\end{itemize}
+\end{tcolorbox}
+
+% ─── Section 2.2 ────────────────────────────────────────────────────────────
+\section{Local Neural Network Risk Model}
+
+An integrated client-side neural net assesses active task parameters in real time to produce a personalised \textbf{Procrastination Probability Score}.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-014.jpg}
+    \caption{Risk model — baseline assessment}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-015.jpg}
+    \caption{Risk model — elevated risk alert}
+  \end{subfigure}
+  \caption{Local MLP Neural Network Risk Model panel}
+  \label{fig:riskmodel}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-016.jpg}
+    \caption{Risk factor breakdown}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-017.jpg}
+    \caption{Score trend visualisation}
+  \end{subfigure}
+  \caption{Neural network risk score detail views}
+\end{figure}
+
+% ─── Section 2.3 ────────────────────────────────────────────────────────────
+\section{Capacity Mapping \& Focus Nudges}
+
+This module displays floating telemetry panels indicating current focus scores, active priority hours, and ambient audio controls that help users enter deep-work states.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-028.jpg}
+    \caption{Capacity map — focus allocation}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-029.jpg}
+    \caption{Capacity map — nudge panel}
+  \end{subfigure}
+  \caption{Capacity Mapping and Focus Nudge module}
+  \label{fig:capacity}
+\end{figure}
+
+% ─── Section 2.4 ────────────────────────────────────────────────────────────
+\section{Gemini Natural Language Task Parser}
+
+Users dictate complex schedules in plain English. Gemini 2.5 Flash parses the input, extracts structured task objects, and estimates cognitive load metrics and confidence scores automatically.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-148.jpg}
+    \caption{Task input — voice/text entry}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-149.jpg}
+    \caption{Parsed task output with confidence score}
+  \end{subfigure}
+  \caption{Gemini NL Task Parser — input to structured task conversion}
+  \label{fig:geminiparser}
+\end{figure}
+
+\begin{tcolorbox}[infobox, title={Example Parse}]
+\textbf{User input:}\ \textit{``Finish presentation slides by tomorrow at 4 PM, high priority, will take 3 hours.''} \\[4pt]
+\textbf{Gemini output:}
+\begin{itemize}[noitemsep, topsep=3pt]
+  \item \texttt{title}: Finish presentation slides
+  \item \texttt{deadline}: Tomorrow 16:00
+  \item \texttt{priority}: High
+  \item \texttt{estimated\_duration}: 3h
+  \item \texttt{cognitive\_load}: 7.4/10
+  \item \texttt{confidence}: 94\%
+\end{itemize}
+\end{tcolorbox}
+
+% ─── Section 2.5 ────────────────────────────────────────────────────────────
+\section{Interactive Co-pilot — IQ Coach Sidebar}
+
+A sliding AI sidebar where users can naturally command, reschedule, and complete tasks. The agent executes all actions and commits updates to Firestore in real time.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-159.jpg}
+    \caption{IQ Coach — conversation view}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-160.jpg}
+    \caption{IQ Coach — executing a reschedule}
+  \end{subfigure}
+  \caption{IQ Coach Co-pilot Sidebar — agentic task management}
+  \label{fig:iqcoach}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-161.jpg}
+    \caption{IQ Coach — Firestore commit confirmation}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-162.jpg}
+    \caption{IQ Coach — action history log}
+  \end{subfigure}
+\end{figure}
+
+% ─── Section 2.6 ────────────────────────────────────────────────────────────
+\section{Task Deconstruction \& Subtask Builder}
+
+Gemini automatically decomposes complex deadlines into discrete actionable subtasks. Users can edit subtask parameters, adjust time estimates, and track incremental completion.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-163.jpg}
+    \caption{Subtask builder — auto-generated breakdown}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-174.jpg}
+    \caption{Subtask builder — edit and reorder}
+  \end{subfigure}
+  \caption{Task Deconstruction and Subtask Builder}
+  \label{fig:subtasks}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{ezgif-frame-175.jpg}
+  \caption{Subtask completion progress tracker}
+\end{figure}
+
+% ─── Section 2.7 ────────────────────────────────────────────────────────────
+\section{Kanban Progress Board}
+
+A drag-and-drop board for tracking commitments across progress columns. Audio chimes fire on task completion to provide positive reinforcement.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-176.jpg}
+    \caption{Kanban — three-column overview}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-177.jpg}
+    \caption{Kanban — card drag in progress}
+  \end{subfigure}
+  \caption{Kanban Progress Board with columns: \textit{Due Today}, \textit{In Progress}, \textit{Completed}}
+  \label{fig:kanban}
+\end{figure}
+
+% ─── Section 2.8 ────────────────────────────────────────────────────────────
+\section{Glassmorphic Calendar Grid}
+
+An edge-to-edge borderless weekly calendar that overlays tasks alongside Google Calendar events and highlights Peak Focus Windows for optimal scheduling.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-188.jpg}
+    \caption{Calendar — weekly task overlay}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-189.jpg}
+    \caption{Calendar — Peak Focus Window highlights}
+  \end{subfigure}
+  \caption{Glassmorphic VisionOS Calendar Grid with Google Calendar sync}
+  \label{fig:calendar}
+\end{figure}
+
+% ─── Section 2.9 ────────────────────────────────────────────────────────────
+\section{Procrastination Forensics \& Score Forecasting}
+
+This analytics module catalogues behavioural delay patterns to identify the user's \textit{procrastination fingerprint} and charts predictive score trends with SVG visualisations.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-200.jpg}
+    \caption{Forensics — behavioural pattern analysis}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-201.jpg}
+    \caption{Forensics — score forecast chart}
+  \end{subfigure}
+  \caption{Procrastination Forensics and Predictive Score Dashboard}
+  \label{fig:forensics}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-202.jpg}
+    \caption{Pattern type classification}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-203.jpg}
+    \caption{Intervention recommendations}
+  \end{subfigure}
+\end{figure}
+
+% ─── Section 2.10 ───────────────────────────────────────────────────────────
+\section{Habit Streak Tracker}
+
+Monitors routine completions with glowing circular progress gauges and integrates Gemini-powered success probability forecasts for each tracked habit.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-214.jpg}
+    \caption{Habit tracker — streak overview}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-215.jpg}
+    \caption{Habit tracker — success probability forecast}
+  \end{subfigure}
+  \caption{Habit Streak Tracker with circular progress gauges}
+  \label{fig:habits}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-216.jpg}
+    \caption{Habit detail and edit view}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-217.jpg}
+    \caption{Streak milestone celebration}
+  \end{subfigure}
+\end{figure}
+
+% ─── Section 2.11 ───────────────────────────────────────────────────────────
+\section{Chrome Extension Panel}
+
+The companion Chrome extension synchronises web research tabs, captures snippets, and pushes tasks directly to the cloud dashboard — eliminating context-switching.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-228.jpg}
+    \caption{Extension popup — task capture}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{ezgif-frame-229.jpg}
+    \caption{Extension popup — sync confirmation}
+  \end{subfigure}
+  \caption{Chrome Extension Panel — browser-to-dashboard task pipeline}
+  \label{fig:extension}
+\end{figure}
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Google Technologies Integration}
+\label{ch:google}
+
+DeadlineIQ integrates \textbf{seven core Google technologies} spanning Cloud, Firebase, and Workspace products to power its intelligence and cloud infrastructure.
+
+\section{Integration Summary}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.5}
+  \begin{tabularx}{\linewidth}{>{\bfseries}p{4.2cm} X}
+    \toprule
+    \textbf{Technology} & \textbf{Role in DeadlineIQ} \\
+    \midrule
+    Firebase Authentication &
+      Google OAuth 2.0 identity management and session token validation for all protected operations. \\
+    Cloud Firestore &
+      Real-time NoSQL database for user profiles, task documents, calendar slots, and behavioural metrics. \\
+    Gemini API \texttt{(gemini-2.5-flash)} &
+      Drives NL task parsing, automatic subtask generation, and cognitive-load forecasting. \\
+    Google Calendar API &
+      Syncs allocated focus slots and task deadlines to the user's primary Google Calendar. \\
+    Google Sheets API &
+      Exports productivity logs and completed task data as Sheets-compatible CSV with OAuth sync validation. \\
+    Google Cloud Run &
+      Pre-configured containerised deployments for serverless, auto-scaling production hosting. \\
+    Firebase Hosting &
+      Global CDN delivery of production assets under verified SSL (\texttt{*.web.app / *.firebaseapp.com}). \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Google technology stack — roles and responsibilities}
+\end{table}
+
+\section{Architecture Dependency Diagram}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.6cm and 2.4cm,
+  every node/.style={font=\small},
+  core/.style={
+    draw=accent, fill=accent, rounded corners=6pt,
+    minimum width=3.8cm, minimum height=0.9cm,
+    text=white, font=\small\bfseries, align=center
+  },
+  svc/.style={
+    draw=accent!60, fill=accentlight, rounded corners=5pt,
+    minimum width=3.2cm, minimum height=0.8cm,
+    text=primary, font=\small, align=center
+  },
+  arr/.style={-{Stealth[length=5pt]}, thick, color=accent!70},
+]
+  \node[core] (app) {DeadlineIQ\\Core Application};
+
+  \node[svc, above left=1.4cm and 2.6cm of app]  (auth) {Firebase Auth};
+  \node[svc, above=1.6cm of app]                  (fs)   {Cloud Firestore};
+  \node[svc, above right=1.4cm and 2.6cm of app]  (gem)  {Gemini 2.5 Flash};
+  \node[svc, below left=1.4cm and 2.6cm of app]   (cal)  {Calendar API};
+  \node[svc, below=1.6cm of app]                   (run)  {Cloud Run};
+  \node[svc, below right=1.4cm and 2.6cm of app]  (host) {Firebase Hosting};
+  \node[svc, left=2.8cm of app]                    (sh)   {Sheets API};
+
+  \draw[arr] (auth) -- (app);
+  \draw[arr] (fs)   -- (app);
+  \draw[arr] (gem)  -- (app);
+  \draw[arr] (cal)  -- (app);
+  \draw[arr] (run)  -- (app);
+  \draw[arr] (host) -- (app);
+  \draw[arr] (sh)   -- (app);
+\end{tikzpicture}
+\end{center}
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Technical Architecture}
+\label{ch:architecture}
+
+\section{Front-End Stack}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabularx}{\linewidth}{>{\bfseries}l l X}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Notes} \\
+    \midrule
+    UI Framework    & React 18          & Component-based SPA with concurrent rendering \\
+    Build Tool      & Vite              & Sub-second HMR; optimised production bundles \\
+    Styling         & Tailwind CSS      & Glassmorphism utilities + custom spatial transitions \\
+    Client ML       & Pure JavaScript   & MLP in \texttt{src/utils/localML.js}; no external lib \\
+    State / Sync    & React Context + Firestore SDK & Real-time bi-directional sync \\
+    Routing         & React Router v6   & Client-side HTML5 history routing \\
+    \bottomrule
+  \end{tabularx}
+  \caption{Front-end technology stack}
+\end{table}
+
+\section{Client-Side Neural Network (MLP)}
+
+The procrastination risk model is a \textbf{Multi-Layer Perceptron} written in pure JavaScript and executed entirely within the browser runtime. No training data or model weights ever leave the device.
+
+\subsection{Model Specification}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{>{\bfseries}l l}
+    \toprule
+    \textbf{Property} & \textbf{Value} \\
+    \midrule
+    Algorithm        & Online supervised backpropagation \\
+    Training epochs  & 10 per update cycle \\
+    Output range     & $p \in [0, 1]$ (procrastination probability) \\
+    Storage          & \texttt{localStorage} (device-only) \\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Input Features}} \\
+    \midrule
+    Feature 1 & Task urgency (normalised 0--1) \\
+    Feature 2 & Estimated duration (hours) \\
+    Feature 3 & Historical deferral rate \\
+    Feature 4 & Time-of-day coefficient \\
+    Feature 5 & Deadline proximity (hours remaining) \\
+    \bottomrule
+  \end{tabular}
+  \caption{MLP neural network specification}
+\end{table}
+
+\begin{tcolorbox}[warningbox, title={Privacy Guarantee}]
+All neural network weights and training samples are stored exclusively in the user's browser \texttt{localStorage}. No behavioural telemetry is transmitted to any external endpoint.
+\end{tcolorbox}
+
+\section{Firestore Security Rules}
+\label{sec:rules}
+
+All Firestore reads and writes are protected by production-grade security rules that enforce strict authenticated owner-only access:
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[numbers=none]
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write:
+        if request.auth != null
+        && request.auth.uid == userId;
+    }
+  }
+}
+\end{lstlisting}
+\end{tcolorbox}
+
+These rules guarantee that:
+\begin{itemize}[noitemsep]
+  \item Unauthenticated requests are rejected at the database layer.
+  \item Each user can only access documents within their own \texttt{/users/\{userId\}/} namespace.
+  \item Cross-user data leakage is architecturally impossible.
+\end{itemize}
+
+\section{Project Directory Structure}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[numbers=none]
+deadlineiq/
+├── public/                    # Static assets (favicon, icons)
+├── src/
+│   ├── components/
+│   │   ├── Dashboard/         # HUD, telemetry, navigation
+│   │   ├── Calendar/          # Glassmorphic weekly grid
+│   │   ├── Kanban/            # Drag-and-drop progress board
+│   │   ├── Forensics/         # Procrastination analytics
+│   │   ├── Coach/             # IQ Coach co-pilot sidebar
+│   │   ├── Habits/            # Streak tracker + gauges
+│   │   └── Settings/          # API keys and preferences
+│   ├── utils/
+│   │   └── localML.js         # Client-side MLP neural network
+│   ├── services/
+│   │   ├── firebase.js        # Firestore and Auth SDK
+│   │   ├── gemini.js          # Gemini API client wrapper
+│   │   └── calendar.js        # Google Calendar API wrapper
+│   ├── App.jsx                # Root component and routing
+│   └── main.jsx               # Vite entry point
+├── .env                       # Environment variables (NOT committed)
+├── firestore.rules            # Firestore security rules
+├── firebase.json              # Firebase Hosting configuration
+├── Dockerfile                 # Multi-stage container build
+├── nginx.conf                 # SPA routing fallback config
+├── vite.config.js             # Vite build configuration
+└── package.json               # Dependencies and scripts
+\end{lstlisting}
+\end{tcolorbox}
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Local Development Setup}
+\label{ch:setup}
+
+\section{Prerequisites}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.4}
+  \begin{tabular}{>{\bfseries}l l l}
+    \toprule
+    \textbf{Tool} & \textbf{Required Version} & \textbf{Notes} \\
+    \midrule
+    Node.js & v18 or v20 & LTS releases strongly recommended \\
+    npm     & Bundled with Node & Alternatively use \texttt{pnpm} or \texttt{yarn} \\
+    Git     & Any recent release & For cloning the repository \\
+    \bottomrule
+  \end{tabular}
+  \caption{Development prerequisites}
+\end{table}
+
+\section{Installation Steps}
+
+\subsection{Step 1 — Navigate and Install Dependencies}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[language=bash]
+# Navigate to the project directory
+cd deadlineiq
+
+# Install all npm dependencies
+npm install
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Step 2 — Environment Configuration}
+
+Create a \texttt{.env} file in the project root. Populate it with your Firebase project credentials:
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[numbers=none]
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+\end{lstlisting}
+\end{tcolorbox}
+
+\begin{tcolorbox}[infobox, title={Tip — Gemini API Key}]
+The Gemini Developer API Key can be entered directly in the web UI under \textbf{Settings $\rightarrow$ API Configuration}, so you do not need to add it to the \texttt{.env} file.
+\end{tcolorbox}
+
+\subsection{Step 3 — Start the Development Server}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[language=bash]
+npm run dev
+\end{lstlisting}
+\end{tcolorbox}
+
+Open \url{http://localhost:5174} in your browser. Vite's Hot Module Replacement (HMR) provides instant UI feedback during development.
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Deployment}
+\label{ch:deploy}
+
+\section{Docker Deployment}
+
+DeadlineIQ ships with a multi-stage \texttt{Dockerfile} that compiles static assets and serves them via a custom \texttt{nginx.conf} with HTML5 history-mode fallback routing.
+
+\subsection{Build the Container Image}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[language=bash]
+docker build -t deadlineiq .
+\end{lstlisting}
+\end{tcolorbox}
+
+\subsection{Run the Container}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[language=bash]
+# Maps container port 80 to host port 8080
+docker run -d -p 8080:80 deadlineiq
+\end{lstlisting}
+\end{tcolorbox}
+
+Access the application at \url{http://localhost:8080}.
+
+\begin{tcolorbox}[warningbox, title={Port Mapping Note}]
+The container exposes port \textbf{80} internally (nginx default). Adjust \texttt{-p \textit{HOST\_PORT}:80} to fit your environment. Ensure no other service is bound to the chosen host port.
+\end{tcolorbox}
+
+\section{Firebase Hosting Deployment}
+
+\begin{tcolorbox}[codebox]
+\begin{lstlisting}[language=bash]
+# 1. Authenticate with your Google account
+npx firebase login
+
+# 2. Build optimised production assets
+npm run build
+
+# 3. Deploy to Firebase Hosting
+npx firebase deploy --only hosting
+\end{lstlisting}
+\end{tcolorbox}
+
+After a successful deployment, the application is globally available at:
+\begin{itemize}[noitemsep]
+  \item \texttt{https://\textit{your-project-id}.web.app}
+  \item \texttt{https://\textit{your-project-id}.firebaseapp.com}
+\end{itemize}
+
+Both endpoints are served over verified SSL with Firebase's global CDN.
+
+\section{Google Cloud Run Deployment}
+
+For serverless, auto-scaling production hosting, the project includes pre-configured Cloud Run artifacts. Integrate \texttt{cloudbuild.yaml} into your CI/CD pipeline to trigger automated container builds and deployments on every push to the main branch.
+
+% ════════════════════════════════════════════════════════════════════════════
+\chapter{Security Considerations}
+\label{ch:security}
+
+\section{Authentication Layer}
+Firebase Authentication with Google OAuth 2.0 ensures every session is cryptographically signed and token-validated. Token expiry and refresh cycles are handled automatically by the Firebase SDK.
+
+\section{Data Isolation at the Database Layer}
+The Firestore namespace structure (\texttt{/users/\{userId\}/...}) combined with the security rules described in Section~\ref{sec:rules} makes cross-user data access architecturally impossible — not merely a policy decision.
+
+\section{Client-Side ML Privacy}
+The MLP neural network runs entirely within the browser's JavaScript engine. Behavioural training data and learned weights are persisted only to \texttt{localStorage} on the user's device.
+
+\section{API Key Security Best Practices}
+
+\begin{tcolorbox}[warningbox, title={Important Security Guidelines}]
+\begin{itemize}[noitemsep, topsep=4pt]
+  \item Add \texttt{.env} to \texttt{.gitignore} immediately. \textbf{Never commit credentials to version control.}
+  \item In the Google Cloud Console, restrict Firebase API keys to authorised domains only (e.g., your \texttt{web.app} domain).
+  \item Rotate Gemini API keys periodically from the Google AI Studio dashboard.
+  \item Enable Firebase App Check to block unauthorised clients from accessing your backend.
+  \item Review Firestore security rules before every production release.
+\end{itemize}
+\end{tcolorbox}
+
+% ─── Back Cover ─────────────────────────────────────────────────────────────
+\newpage
+\thispagestyle{empty}
+\pagecolor{primary}
+\color{white}
+\vspace*{\fill}
+\begin{center}
+  \begin{tikzpicture}
+    \draw[accent, line width=1.5pt] (0,0) -- (10,0);
+  \end{tikzpicture}\\[1em]
+  {\Large\bfseries DeadlineIQ}\\[0.5em]
+  {\color{accentlight} Technical Documentation \textbullet\ v1.0 \textbullet\ June 2026}\\[0.8em]
+  {\small\color{muted}
+    For configuration help, contribution guidelines, or bug reports,\\
+    consult the repository \texttt{README.md} or contact the engineering team.
+  }\\[1em]
+  \begin{tikzpicture}
+    \draw[accent, line width=1.5pt] (0,0) -- (10,0);
+  \end{tikzpicture}
+\end{center}
+\vspace*{\fill}
+\nopagecolor
+
+\end{document}
