@@ -16,19 +16,23 @@ export default function AISpeaker({ user, tasks }) {
       const utterance = new SpeechSynthesisUtterance(text);
       if (window.speechSynthesis) {
         const voices = window.speechSynthesis.getVoices();
-        // Prioritize Indian English voices (Swara style)
+        // Prioritize natural female voices (Samantha, Siri, Veena, Swara, Zira) over robotic default voices
         const voice = voices.find(v => 
-          v.lang.toLowerCase().includes("en-in") || 
-          v.lang.toLowerCase().includes("en_in") ||
-          v.name.toLowerCase().includes("india")
-        ) || voices.find(v => 
-          v.name.toLowerCase().includes("google us english") || 
           v.name.toLowerCase().includes("samantha") || 
-          v.name.toLowerCase().includes("siri")
+          v.name.toLowerCase().includes("siri") ||
+          v.name.toLowerCase().includes("veena") ||
+          v.name.toLowerCase().includes("swara") ||
+          v.name.toLowerCase().includes("karen") ||
+          v.name.toLowerCase().includes("zira")
+        ) || voices.find(v => 
+          v.lang.toLowerCase().includes("en-in") || 
+          v.lang.toLowerCase().includes("en_in")
+        ) || voices.find(v => 
+          v.name.toLowerCase().includes("google us english")
         ) || voices.find(v => v.lang.startsWith("en"));
         if (voice) utterance.voice = voice;
       }
-      utterance.rate = 1.1;
+      utterance.rate = 1.05;
       utterance.pitch = 1.0;
       utterance.onstart = () => setOrbState("speaking");
       utterance.onend = () => setOrbState("idle");
