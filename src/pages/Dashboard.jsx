@@ -16,7 +16,9 @@ import {
 import { useToast } from "../context/ToastContext";
 import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
+import MultiAgentConsole from "../components/MultiAgentConsole";
 import AITaskInput from "../components/AITaskInput";
+import { useNavigate } from "react-router-dom";
 import InterventionCard from "../components/InterventionCard";
 import TriageMode from "../components/TriageMode";
 import { logAvoidanceEvent } from "../services/forensics";
@@ -29,8 +31,10 @@ import { Activity, CheckCircle2, Clock3, Pause, Play, Plus, RotateCcw, ShieldAle
 
 export default function Dashboard() {
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
+  const [isAgentConsoleOpen, setIsAgentConsoleOpen] = useState(false);
   useEffect(() => {
     const handleMove = (e) => {
       const x = (e.clientX - window.innerWidth / 2) / 60;
@@ -462,7 +466,13 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <span className="w-fit rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 font-mono group-hover:bg-indigo-500/15 group-hover:text-indigo-300 group-hover:border-indigo-500/30 transition-all duration-300">
+          <span 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAgentConsoleOpen(true);
+            }}
+            className="w-fit rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 font-mono hover:bg-indigo-500/20 hover:text-indigo-300 hover:border-indigo-500/40 transition-all duration-300 active:scale-95 cursor-pointer z-20"
+          >
             Multi-agent planning online • Click to open
           </span>
         </div>
@@ -530,7 +540,10 @@ export default function Dashboard() {
             className="grid gap-4 transition duration-350 ease-out"
           >
             {/* Risk Model Widget */}
-            <div className="rounded-[28px] border border-violet-300/16 bg-[#0b0820]/88 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-md hover:bg-[#100b2a]/90 transition duration-300 relative group">
+            <div 
+              onClick={() => navigate("/insights")}
+              className="rounded-[28px] border border-violet-300/16 bg-[#0b0820]/88 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-md hover:bg-[#100b2a]/90 hover:border-violet-500/30 hover:-translate-y-0.5 transition-all duration-300 relative group cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 font-mono">Risk model</div>
@@ -550,8 +563,11 @@ export default function Dashboard() {
             </div>
 
             {/* Capacity Map Widget */}
-            <div className="rounded-[28px] border border-violet-300/16 bg-[#0b0820]/88 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-md hover:bg-[#100b2a]/90 transition duration-300">
-              <div className="mb-3 flex items-center justify-between">
+            <div 
+              onClick={() => navigate("/calendar")}
+              className="rounded-[28px] border border-violet-300/16 bg-[#0b0820]/88 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.42)] backdrop-blur-md hover:bg-[#100b2a]/90 hover:border-indigo-500/30 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+            >
+              <div className="mb-3 flex items-center justify-between font-mono">
                 <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 font-mono">Capacity map</div>
                 <Clock3 className="h-4 w-4 text-slate-400" />
               </div>
@@ -734,6 +750,11 @@ export default function Dashboard() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleAddTask}
+        />
+
+        <MultiAgentConsole
+          isOpen={isAgentConsoleOpen}
+          onClose={() => setIsAgentConsoleOpen(false)}
         />
 
 
