@@ -520,7 +520,13 @@ export default function Dashboard() {
                 </div>
                 
                 <h2 className="max-w-xl text-3xl font-black leading-tight tracking-normal text-white sm:text-5xl">
-                  Good Evening,
+                  {(() => {
+                    const hour = new Date().getHours();
+                    if (hour >= 5 && hour < 12) return "Good Morning,";
+                    if (hour >= 12 && hour < 17) return "Good Afternoon,";
+                    if (hour >= 17 && hour < 21) return "Good Evening,";
+                    return "Good Night,";
+                  })()}
                   <span className="block bg-gradient-to-r from-white via-indigo-200 to-indigo-500 bg-clip-text text-transparent">
                     {user?.displayName || user?.email?.split("@")[0] || "User"}.
                   </span>
