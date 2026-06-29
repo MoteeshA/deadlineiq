@@ -54,7 +54,7 @@ export default function Extension() {
         try {
           const contentSource = `Source URL: ${urlParam || "unspecified"}\nPage Title: ${titleParam || "unspecified"}\nContent Summary: ${textParam || "unspecified"}`;
           
-          // Call Gemini
+          // Call AI parser
           const taskData = await parseTaskWithGemini(contentSource, setStatusText);
           await saveCapturedTask(taskData, "Bookmarklet Capture");
           
@@ -195,6 +195,27 @@ export default function Extension() {
     localStorage.setItem(dedupeKey, Date.now().toString());
     // ──────────────────────────────────────────────────────────────────────────
 
+    // ── Smart Registration Link Fallback ──────────────────────────────────
+    // Centralized fallback for registrationLink when capturing from bookmarklet or scraping web URL.
+    let finalRegLink = taskData.registrationLink || null;
+    if (!finalRegLink) {
+      let parsedUrl = null;
+      if (source && source.startsWith("Web: ")) {
+        parsedUrl = source.replace("Web: ", "").trim();
+      } else if (source === "Bookmarklet Capture" && sourceUrl) {
+        parsedUrl = sourceUrl;
+      }
+      
+      if (parsedUrl) {
+        const decodedUrl = decodeURIComponent(parsedUrl);
+        const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|ideathon|buildathon|fellowship|internship|apply|register/i;
+        if (hackathonTypePattern.test(`${decodedUrl} ${taskData.title} ${taskData.type}`)) {
+          finalRegLink = decodedUrl;
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     const newTask = {
       title: taskData.title || "Untitled Captured Task",
       deadline: taskData.deadline ? new Date(taskData.deadline) : null,
@@ -204,7 +225,7 @@ export default function Extension() {
       estimatedHours: taskData.estimatedHours || 2,
       priority: taskData.priority || "medium",
       type: taskData.type || "General",
-      registrationLink: taskData.registrationLink || null,
+      registrationLink: finalRegLink,
       prizes: taskData.prizes || null,
       eligibility: taskData.eligibility || null,
       location: taskData.location || null,
