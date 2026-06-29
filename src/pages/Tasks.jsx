@@ -14,6 +14,7 @@ import {
 import { useToast } from "../context/ToastContext";
 import TaskCard from "../components/TaskCard";
 import { trainLocalModel } from "../utils/localML";
+import { checkAndTriggerEmail } from "../services/email";
 
 export default function Tasks() {
   const { addToast } = useToast();
@@ -88,6 +89,18 @@ export default function Tasks() {
       });
       trainLocalModel(task, true); // Train online ML model: 100% procrastination
       addToast(`Deferred "${task.title}"`, { type: "success" });
+
+      // Trigger email check on manual deferral
+      const deferredTask = {
+        ...task,
+        deadline: newDeadline,
+        deferralCount: (task.deferralCount || 0) + 1,
+      };
+      checkAndTriggerEmail(deferredTask, "deferral").then((sent) => {
+        if (sent) {
+          addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
+        }
+      }).catch(err => console.error("Resend alert dispatch failed:", err));
     } catch (err) {
       console.error(err);
       addToast("Failed to defer task", { type: "error" });

@@ -6,6 +6,7 @@ import { collection, addDoc, doc, updateDoc, serverTimestamp, onSnapshot } from 
 import AIAgentSidebar from "./AIAgentSidebar";
 import AISpeaker from "./AISpeaker";
 import { useToast } from "../context/ToastContext";
+import { checkAndTriggerEmail } from "../services/email";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -77,6 +78,12 @@ export default function Layout({ children }) {
       const { type, payload } = action;
 
       if (type === "ADD_TASK") {
+        const subtasks = [
+          { title: "Research & Outline", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.3 * 10) / 10), completed: false },
+          { title: "Implementation Draft", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.5 * 10) / 10), completed: false },
+          { title: "Review & Refine", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.2 * 10) / 10), completed: false }
+        ];
+
         await addDoc(collection(db, "users", user.uid, "tasks"), {
           title: payload.title,
           priority: payload.priority || "medium",
@@ -86,13 +93,24 @@ export default function Layout({ children }) {
           createdAt: serverTimestamp(),
           deferralCount: 0,
           deferralHistory: [],
-          subtasks: [
-            { title: "Research & Outline", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.3 * 10) / 10), completed: false },
-            { title: "Implementation Draft", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.5 * 10) / 10), completed: false },
-            { title: "Review & Refine", durationHours: Math.max(0.5, Math.round((payload.estimatedHours || 2) * 0.2 * 10) / 10), completed: false }
-          ]
+          subtasks
         });
         addToast(`AI Agent created task: "${payload.title}"`, { type: "success" });
+
+        // Trigger email notification check
+        const taskData = {
+          title: payload.title,
+          priority: payload.priority || "medium",
+          estimatedHours: payload.estimatedHours || 2,
+          type: "General",
+          status: "today",
+          subtasks
+        };
+        checkAndTriggerEmail(taskData, "creation").then((sent) => {
+          if (sent) {
+            addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
+          }
+        }).catch(err => console.error("Resend alert dispatch failed:", err));
       }
 
       else if (type === "DEFER_TASK") {
@@ -114,6 +132,20 @@ export default function Layout({ children }) {
           ]
         });
         addToast(`AI Agent rescheduled task.`, { type: "success" });
+
+        // Trigger email notification check
+        if (originalTask) {
+          const deferredTask = {
+            ...originalTask,
+            deadline: new Date(payload.newDeadline),
+            deferralCount: (originalTask.deferralCount || 0) + 1
+          };
+          checkAndTriggerEmail(deferredTask, "deferral").then((sent) => {
+            if (sent) {
+              addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
+            }
+          }).catch(err => console.error("Resend alert dispatch failed:", err));
+        }
       }
 
       else if (type === "COMPLETE_TASK") {

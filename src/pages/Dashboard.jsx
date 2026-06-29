@@ -23,6 +23,7 @@ import { logAvoidanceEvent } from "../services/forensics";
 import EmergencyBanner from "../components/EmergencyBanner";
 import { generateMockMeetings, fetchGoogleCalendarEvents } from "../utils/scheduler";
 import { trainLocalModel, predictProcrastinationRisk } from "../utils/localML";
+import { checkAndTriggerEmail } from "../services/email";
 import { Activity, CheckCircle2, Clock3, Pause, Play, Plus, RotateCcw, ShieldAlert, Timer, Volume2 } from "lucide-react";
 
 
@@ -187,6 +188,18 @@ export default function Dashboard() {
         deferralHistory: [],
       });
       addToast(`Task "${taskData.title}" created successfully!`, { type: "success" });
+      
+      // Proactively check and send procrastination risk alerts via Resend
+      const addedTask = {
+        ...taskData,
+        status: "today"
+      };
+      checkAndTriggerEmail(addedTask, "creation").then((sent) => {
+        if (sent) {
+          addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
+        }
+      }).catch(err => console.error("Resend alert dispatch failed:", err));
+
     } catch (error) {
       console.error("Error creating task:", error);
       addToast("Failed to create task.", { type: "error" });
