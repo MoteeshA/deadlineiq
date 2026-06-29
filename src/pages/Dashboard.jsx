@@ -190,15 +190,14 @@ export default function Dashboard() {
       addToast(`Task "${taskData.title}" created successfully!`, { type: "success" });
       
       // Proactively check and send procrastination risk alerts via Resend
-      const addedTask = {
-        ...taskData,
-        status: "today"
-      };
-      checkAndTriggerEmail(addedTask, "creation").then((sent) => {
+      checkAndTriggerEmail(taskData, "creation").then((sent) => {
         if (sent) {
           addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
         }
-      }).catch(err => console.error("Resend alert dispatch failed:", err));
+      }).catch(err => {
+        console.error("Gmail alert dispatch failed:", err);
+        addToast(`Email Alert Error: ${err.message || err}`, { type: "error", duration: 8000 });
+      });
 
     } catch (error) {
       console.error("Error creating task:", error);

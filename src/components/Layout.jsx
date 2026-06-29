@@ -110,7 +110,10 @@ export default function Layout({ children }) {
           if (sent) {
             addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
           }
-        }).catch(err => console.error("Resend alert dispatch failed:", err));
+        }).catch(err => {
+          console.error("Gmail alert dispatch failed:", err);
+          addToast(`Email Alert Error: ${err.message || err}`, { type: "error", duration: 8000 });
+        });
       }
 
       else if (type === "DEFER_TASK") {
@@ -144,7 +147,10 @@ export default function Layout({ children }) {
             if (sent) {
               addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
             }
-          }).catch(err => console.error("Resend alert dispatch failed:", err));
+          }).catch(err => {
+            console.error("Gmail alert dispatch failed:", err);
+            addToast(`Email Alert Error: ${err.message || err}`, { type: "error", duration: 8000 });
+          });
         }
       }
 
