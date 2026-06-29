@@ -75,7 +75,9 @@ export default function Tasks() {
 
   const handleDeferTask = async (task, newDeadline, reason) => {
     try {
-      const originalDeadline = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+      const originalDeadline = task.deadline
+        ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
+        : new Date();
       const newHistoryEntry = {
         timestamp: new Date(),
         oldDeadline: originalDeadline,

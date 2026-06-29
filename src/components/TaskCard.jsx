@@ -17,11 +17,13 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const deadlineDate = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+  const deadlineDate = task.deadline
+    ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
+    : null;
   const now = new Date();
-  const isOverdue = deadlineDate < now && task.status !== "completed";
-  const diffHours = (deadlineDate - now) / (1000 * 60 * 60);
-  const isUrgent = diffHours > 0 && diffHours <= 4 && task.status !== "completed";
+  const isOverdue = deadlineDate && deadlineDate < now && task.status !== "completed";
+  const diffHours = deadlineDate ? (deadlineDate - now) / (1000 * 60 * 60) : Infinity;
+  const isUrgent = deadlineDate && diffHours > 0 && diffHours <= 4 && task.status !== "completed";
 
   const getPriorityBadgeColor = (p) => {
     switch (p) {
@@ -50,13 +52,15 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
   };
 
   const handleSnoozeOption = (hoursOffset) => {
-    const newDeadline = new Date(deadlineDate.getTime() + hoursOffset * 60 * 60 * 1000);
+    const referenceDate = deadlineDate || new Date();
+    const newDeadline = new Date(referenceDate.getTime() + hoursOffset * 60 * 60 * 1000);
     onDefer(task, newDeadline, `Snoozed by +${hoursOffset}h`);
     setShowSnooze(false);
   };
 
   const handleSnoozeDays = (daysOffset) => {
-    const newDeadline = new Date(deadlineDate.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+    const referenceDate = deadlineDate || new Date();
+    const newDeadline = new Date(referenceDate.getTime() + daysOffset * 24 * 60 * 60 * 1000);
     onDefer(task, newDeadline, `Snoozed by +${daysOffset}d`);
     setShowSnooze(false);
   };

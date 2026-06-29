@@ -250,7 +250,9 @@ export default function Dashboard() {
     if (!user) return;
     try {
       const taskRef = doc(db, "users", user.uid, "tasks", task.id);
-      const originalDeadline = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+      const originalDeadline = task.deadline
+        ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
+        : new Date();
       
       const newHistoryEntry = {
         timestamp: new Date(),
@@ -282,7 +284,9 @@ export default function Dashboard() {
     if (!user) return;
     try {
       const taskRef = doc(db, "users", user.uid, "tasks", task.id);
-      const originalDeadline = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+      const originalDeadline = task.deadline
+        ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
+        : new Date();
       const newDeadline = new Date(originalDeadline.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 days
 
       const newHistoryEntry = {

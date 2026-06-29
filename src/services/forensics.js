@@ -1,5 +1,6 @@
 import { db } from "../firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { callGroqJson, getConfiguredGeminiApiKey, getConfiguredGroqApiKey } from "./gemini";
 
 // 1. Silent Background Avoidance Logger
 export async function logAvoidanceEvent(userId, task, newDeadline, reason) {
@@ -12,7 +13,9 @@ export async function logAvoidanceEvent(userId, task, newDeadline, reason) {
     else if (hours >= 12 && hours < 17) timeOfDay = "afternoon";
     else if (hours >= 17 && hours < 22) timeOfDay = "evening";
 
-    const deadlineDate = task.deadline?.toDate ? task.deadline.toDate() : new Date(task.deadline);
+    const deadlineDate = task.deadline
+      ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
+      : new Date();
     const diffMs = deadlineDate - now;
     const daysToDeadline = Math.max(0, Math.round((diffMs / (1000 * 60 * 60 * 24)) * 10) / 10);
 
@@ -35,14 +38,23 @@ export async function logAvoidanceEvent(userId, task, newDeadline, reason) {
   }
 }
 
-// Helper to make custom Gemini API calls (Using v1 / gemini-2.5-flash)
+// Helper to make custom cloud AI calls, with Groq as the primary engine.
 async function callGemini(promptText, responseSchema) {
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key missing in Settings");
+  const groqApiKey = getConfiguredGroqApiKey();
+  const apiKey = getConfiguredGeminiApiKey();
+
+  if (groqApiKey) {
+    try {
+      return await callGroqJson({ promptText, apiKey: groqApiKey });
+    } catch (err) {
+      console.warn("Groq analyzer call failed. Falling back to Gemini if available:", err.message);
+    }
   }
 
-  // Updated to use the gemini-2.5-flash model on v1beta endpoint
+  if (!apiKey) {
+    throw new Error("Cloud AI key missing in Settings");
+  }
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
