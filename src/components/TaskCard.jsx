@@ -32,6 +32,28 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
   const diffHours = deadlineDate ? (deadlineDate - now) / (1000 * 60 * 60) : Infinity;
   const isUrgent = deadlineDate && diffHours > 0 && diffHours <= 4 && task.status !== "completed";
 
+  // Smart fallback for registration link (covers cases where URL was not explicitly set as registrationLink but is in sourceUrl or captureSource)
+  const getRegistrationLink = () => {
+    if (task.registrationLink) return task.registrationLink;
+    
+    // Check if it looks like a hackathon/opportunity
+    const isOpportunity = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad/i.test(
+      `${task.title} ${task.type || ""}`
+    );
+    if (!isOpportunity) return null;
+
+    if (task.sourceUrl) return task.sourceUrl;
+    
+    if (task.captureSource && task.captureSource.startsWith("Web: ")) {
+      const urlPart = task.captureSource.replace("Web: ", "").trim();
+      if (urlPart.startsWith("http")) return urlPart;
+    }
+    
+    return null;
+  };
+  
+  const registrationLink = getRegistrationLink();
+
   const getPriorityBadgeColor = (p) => {
     switch (p) {
       case "high":
@@ -107,7 +129,7 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
       </h4>
 
       {/* Hackathon/Opportunity Metadata Badges */}
-      {(task.prizes || task.eligibility || task.location || task.registrationLink) && (
+      {(task.prizes || task.eligibility || task.location || registrationLink) && (
         <div className="mb-3 flex flex-col gap-2.5 pt-1">
           {/* Info badges row */}
           {(task.prizes || task.eligibility || task.location) && (
@@ -130,9 +152,9 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
             </div>
           )}
           {/* Prominent Register Button */}
-          {task.registrationLink && (
+          {registrationLink && (
             <a
-              href={task.registrationLink}
+              href={registrationLink}
               target="_blank"
               rel="noopener noreferrer"
               className="group/reg flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl text-xs font-black uppercase tracking-widest text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:shadow-[0_0_24px_rgba(99,102,241,0.6)] border border-indigo-500/30 hover:border-indigo-400/60 transition-all duration-200 active:scale-[0.97] select-none"
