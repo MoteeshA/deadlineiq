@@ -505,9 +505,18 @@ export default function Extension() {
               <div className="text-sm font-bold text-slate-200 mt-1">{recentTask.title}</div>
             </div>
             <div>
-              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Deadline</div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                {recentTask.taskKind === "event" ? "Meeting Time" : "Deadline"}
+              </div>
               <div className="text-xs font-semibold text-slate-350 mt-1">
-                {recentTask.deadline ? recentTask.deadline.toLocaleString() : "No deadline found"}
+                {recentTask.taskKind === "event"
+                  ? recentTask.eventStart
+                    ? `Meeting at ${new Date(recentTask.eventStart).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Reminder ${recentTask.reminderAt ? new Date(recentTask.reminderAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}`
+                    : "Event captured – set event time above"
+                  : recentTask.deadline
+                    ? (recentTask.deadline instanceof Date ? recentTask.deadline : new Date(recentTask.deadline)).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                    : "No deadline found"
+                }
               </div>
             </div>
             <div>

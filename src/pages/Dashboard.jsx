@@ -194,7 +194,7 @@ export default function Dashboard() {
         ...taskData,
         type: taskData.type || "General",
         subtasks: taskData.subtasks || [],
-        status: taskData.taskKind === "event" ? "scheduled" : "today",
+        status: "today",
         createdAt: serverTimestamp(),
         deferralCount: 0,
         deferralHistory: [],
@@ -383,7 +383,10 @@ export default function Dashboard() {
   ];
 
   const renderColumn = ({ title, statusKey, accent, empty, icon }) => {
-    const columnTasks = tasks.filter((t) => t.status === statusKey);
+    // Due Today includes tasks (status=today), events/meetings (taskKind=event), and legacy "scheduled" tasks
+    const columnTasks = statusKey === "today"
+      ? tasks.filter((t) => t.status === "today" || t.status === "scheduled" || t.taskKind === "event")
+      : tasks.filter((t) => t.status === statusKey && t.taskKind !== "event");
 
     return (
       <section className="flex min-h-[470px] flex-col rounded-2xl border border-violet-400/15 bg-[#070713]/72 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur-xl">
