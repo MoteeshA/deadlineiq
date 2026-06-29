@@ -98,8 +98,13 @@ function normalizeCapturedTask(userInput, parsed) {
   if (intent === "event") {
     // For events (meetings, calls, etc.) — use eventStart from LLM or resolve from text
     const rawEventStart = parsed.eventStart || parsed.startTime || null;
-    const resolvedTime = resolveTimeOnlyReference(userInput);
-    const eventStart = toIsoOrNull(rawEventStart || resolvedTime);
+    let eventStart = rawEventStart ? toIsoOrNull(rawEventStart) : null;
+    if (!eventStart) {
+      const resolvedTime = resolveTimeOnlyReference(userInput);
+      if (resolvedTime) {
+        eventStart = resolvedTime;
+      }
+    }
     const reminderAt = eventStart
       ? toIsoOrNull(new Date(new Date(eventStart).getTime() - 30 * 60 * 1000))
       : null;
@@ -117,16 +122,20 @@ function normalizeCapturedTask(userInput, parsed) {
     };
   }
 
-  // For regular tasks and hackathons — preserve deadline and registrationLink
-  const deadline = parsed.deadline
-    ? toIsoOrNull(parsed.deadline)
-    : (() => {
-        // Default: tomorrow at 5 PM if no deadline was extracted
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(17, 0, 0, 0);
-        return tomorrow.toISOString();
-      })();
+  // For regular tasks and hackathons — resolve deadline
+  let deadline = parsed.deadline ? toIsoOrNull(parsed.deadline) : null;
+  if (!deadline) {
+    const resolvedTime = resolveTimeOnlyReference(userInput);
+    if (resolvedTime) {
+      deadline = resolvedTime;
+    } else {
+      // Default: tomorrow at 5 PM if no deadline was extracted or resolved
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(17, 0, 0, 0);
+      deadline = tomorrow.toISOString();
+    }
+  }
 
   return {
     ...parsed,
