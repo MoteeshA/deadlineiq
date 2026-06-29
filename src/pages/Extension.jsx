@@ -29,15 +29,15 @@ export default function Extension() {
   const dropRef = useRef(null);
   const dragLinkRef = useRef(null);
 
+  // Bookmarklet Code using redirection to guarantee bypass of popup blockers
+  const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.location.href='https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text;})();`;
+
   // Set javascript href dynamically to bypass React XSS sanitization
   useEffect(() => {
     if (dragLinkRef.current) {
       dragLinkRef.current.setAttribute("href", bookmarkletCode);
     }
   }, [bookmarkletCode]);
-
-  // Bookmarklet Code using redirection to guarantee bypass of popup blockers
-  const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.location.href='https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text;})();`;
 
   // Detect and process Bookmarklet Intake parameters on load
   useEffect(() => {
