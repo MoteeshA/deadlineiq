@@ -20,7 +20,7 @@ export async function preloadWebLlm(onProgress) {
     throw new Error("WebGPU is not supported by your browser.");
   }
 
-  const webLLM = await import("https://esm.run/@mlc-ai/web-llm");
+  const webLLM = await import("@mlc-ai/web-llm");
   
   webLlmEngine = await webLLM.CreateMLCEngine("Qwen2-0.5B-Instruct-q4f16_1-MLC", {
     initProgressCallback: (report) => {
@@ -45,7 +45,7 @@ async function queryInBrowserLLM(userInput, currentLocalTime, onProgress) {
     throw new Error("WebGPU is not supported by your browser. Please use Chrome or Safari 17.4+.");
   }
 
-  const webLLM = await import("https://esm.run/@mlc-ai/web-llm");
+  const webLLM = await import("@mlc-ai/web-llm");
   
   if (!webLlmEngine) {
     if (onProgress) onProgress("Initializing local in-browser LLM (Qwen2-0.5B: ~350MB)...");
