@@ -187,6 +187,9 @@ export default function Extension() {
     const newTask = {
       title: taskData.title || "Untitled Captured Task",
       deadline: taskData.deadline ? new Date(taskData.deadline) : null,
+      eventStart: taskData.eventStart ? new Date(taskData.eventStart) : null,
+      reminderAt: taskData.reminderAt ? new Date(taskData.reminderAt) : null,
+      taskKind: taskData.taskKind || "task",
       estimatedHours: taskData.estimatedHours || 2,
       priority: taskData.priority || "medium",
       type: taskData.type || "General",
@@ -195,7 +198,7 @@ export default function Extension() {
       eligibility: taskData.eligibility || null,
       location: taskData.location || null,
       subtasks: taskData.subtasks || [],
-      status: "today",
+      status: taskData.taskKind === "event" ? "scheduled" : "today",
       createdAt: serverTimestamp(),
       deferralCount: 0,
       deferralHistory: [],
@@ -207,17 +210,21 @@ export default function Extension() {
     const taskWithId = {
       id: docRef.id,
       ...newTask,
-      deadline: newTask.deadline // keep as date
+      deadline: newTask.deadline,
+      eventStart: newTask.eventStart,
+      reminderAt: newTask.reminderAt
     };
 
     setRecentTask(taskWithId);
-    addToast(`Task "${taskWithId.title}" auto-created!`, { type: "success" });
+    addToast(`${taskWithId.taskKind === "event" ? "Reminder" : "Task"} "${taskWithId.title}" auto-created!`, { type: "success" });
 
     // Proactively check procrastination risk & send email alert
-    try {
-      await checkAndTriggerEmail(taskWithId, "capture");
-    } catch (emailErr) {
-      console.error("Procrastination alert email trigger failed:", emailErr);
+    if (taskWithId.taskKind !== "event") {
+      try {
+        await checkAndTriggerEmail(taskWithId, "capture");
+      } catch (emailErr) {
+        console.error("Procrastination alert email trigger failed:", emailErr);
+      }
     }
   }
 

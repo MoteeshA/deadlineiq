@@ -194,22 +194,24 @@ export default function Dashboard() {
         ...taskData,
         type: taskData.type || "General",
         subtasks: taskData.subtasks || [],
-        status: "today", // Default status is Due Today
+        status: taskData.taskKind === "event" ? "scheduled" : "today",
         createdAt: serverTimestamp(),
         deferralCount: 0,
         deferralHistory: [],
       });
-      addToast(`Task "${taskData.title}" created successfully!`, { type: "success" });
+      addToast(`${taskData.taskKind === "event" ? "Reminder" : "Task"} "${taskData.title}" created successfully!`, { type: "success" });
       
       // Proactively check and send procrastination risk alerts via Resend
-      checkAndTriggerEmail(taskData, "creation").then((sent) => {
-        if (sent) {
-          addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
-        }
-      }).catch(err => {
-        console.error("Gmail alert dispatch failed:", err);
-        addToast(`Email Alert Error: ${err.message || err}`, { type: "error", duration: 8000 });
-      });
+      if (taskData.taskKind !== "event") {
+        checkAndTriggerEmail(taskData, "creation").then((sent) => {
+          if (sent) {
+            addToast("Procrastination alert email sent successfully! 📧", { type: "info" });
+          }
+        }).catch(err => {
+          console.error("Gmail alert dispatch failed:", err);
+          addToast(`Email Alert Error: ${err.message || err}`, { type: "error", duration: 8000 });
+        });
+      }
 
     } catch (error) {
       console.error("Error creating task:", error);

@@ -25,6 +25,102 @@ function withTimeout(promise, ms, errorMessage = "Timeout exceeded") {
   ]);
 }
 
+function toIsoOrNull(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function resolveTimeOnlyReference(userInput) {
+  const normalized = userInput.toLowerCase();
+  const timeMatch = normalized.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
+  if (!timeMatch) return null;
+
+  let hours = parseInt(timeMatch[1], 10);
+  const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+  const meridiem = timeMatch[3].replace(/\./g, "");
+  if (meridiem === "pm" && hours !== 12) hours += 12;
+  if (meridiem === "am" && hours === 12) hours = 0;
+
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  if (normalized.includes("tomorrow")) {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    date.setFullYear(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  } else if (!normalized.includes("today") && date.getTime() <= Date.now()) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date;
+}
+
+function classifyCaptureIntent(userInput, parsed) {
+  // Trust the LLM's own classification if it returned one
+  if (parsed?.taskKind === "event" || parsed?.taskKind === "task") return parsed.taskKind;
+  
+  const text = `${userInput} ${parsed?.title || ""} ${parsed?.type || ""}`.toLowerCase();
+  // Hackathon/competition registration pages have deadlines but are tasks, not events
+  const hackathonWords = /\b(hackathon|competition|contest|challenge|apply|register|submit|submission|prize|eligib)\b/;
+  const eventWords = /\b(meeting|meet|call|appointment|interview|webinar|session|class|lecture|standup|sync|demo)\b/;
+  const deadlineWords = /\b(deadline|due|apply by|register by|registration closes|last date|finish|complete|deliver|turn in)\b/;
+
+  // Hackathon pages are tasks (with a registration deadline), not events
+  if (hackathonWords.test(text)) return "task";
+  // Something with a deadline keyword is a task
+  if (deadlineWords.test(text)) return "task";
+  // Pure live event (meeting, call, etc.) is an event
+  if (eventWords.test(text)) return "event";
+  return "task";
+}
+
+function normalizeCapturedTask(userInput, parsed) {
+  const intent = classifyCaptureIntent(userInput, parsed);
+
+  if (intent === "event") {
+    // For events (meetings, calls, etc.) — use eventStart from LLM or resolve from text
+    const rawEventStart = parsed.eventStart || parsed.startTime || null;
+    const resolvedTime = resolveTimeOnlyReference(userInput);
+    const eventStart = toIsoOrNull(rawEventStart || resolvedTime);
+    const reminderAt = eventStart
+      ? toIsoOrNull(new Date(new Date(eventStart).getTime() - 30 * 60 * 1000))
+      : null;
+
+    return {
+      ...parsed,
+      deadline: null,          // events don't have a work deadline
+      eventStart,
+      reminderAt,
+      taskKind: "event",
+      type: parsed.type || "Event",
+      estimatedHours: parsed.estimatedHours || 0.5,
+      subtasks: parsed.subtasks?.length ? parsed.subtasks : [],
+      registrationLink: parsed.registrationLink || null
+    };
+  }
+
+  // For regular tasks and hackathons — preserve deadline and registrationLink
+  const deadline = parsed.deadline
+    ? toIsoOrNull(parsed.deadline)
+    : (() => {
+        // Default: tomorrow at 5 PM if no deadline was extracted
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(17, 0, 0, 0);
+        return tomorrow.toISOString();
+      })();
+
+  return {
+    ...parsed,
+    deadline,
+    eventStart: null,
+    reminderAt: null,
+    taskKind: "task",
+    registrationLink: parsed.registrationLink || null
+  };
+}
+
 /**
  * Checks if the WebLLM engine has been successfully preloaded.
  */
@@ -497,18 +593,33 @@ Current Time Context:
 
 Schema Guidelines:
 1. Title: Extracted clean, concise name of the task.
-2. Deadline: ISO 8601 DateTime string. Resolve relative descriptors carefully relative to the Current Local Date/Time context. If a relative time (like '10AM') is given but no explicit day is specified, or if no deadline date is specified at all, default the deadline to TOMORROW (e.g. if today is Monday, June 29, set it to Tuesday, June 30 at the specified time or at 5:00 PM). Never return null.
-3. EstimatedHours: Total hours required. If user specifies "2h", return 2. If unspecified, make a reasonable estimate (e.g. 1 to 10 hours).
-4. Priority: low, medium, or high. Base this on urgency and gravity of the task.
-5. Type: Category, e.g. "Writing", "Programming", "Admin", "Learning", "Event", etc.
-6. IsVague: boolean. Set to true if the task description is very ambiguous (e.g. "do stuff", "study", "work on project"). If true, provide a single, actionable clarifying question in 'clarifyingQuestion' to help define the task, and keep the subtasks array empty.
-7. ClarifyingQuestion: If isVague is true, ask a simple prompt. Else empty string.
-8. Subtasks: A list of 3-6 actionable, sequential subtasks to complete this parent task. Each subtask must have a 'title' and 'durationHours' (how long that step takes). The sum of subtask durationHours should approximate the parent task's estimatedHours. Keep empty if isVague is true.
-9. Confidence: decimal between 0.0 and 1.0.
-10. RegistrationLink: If the task/event contains a URL for applying or registering (especially for hackathons, contests, webinars, or job applications), extract it. Set to null if none exists.
-11. Prizes: For hackathons or competitions, extract any prize details or total cash pool (e.g., "$10,000 cash pool"). Set to null if none.
-12. Eligibility: Extract any participant eligibility requirements (e.g., "Students only", "Open to developers in India"). Set to null if none.
-13. Location: Extract the location of the event (e.g. "Online", "Hybrid", "San Francisco"). Set to null if none.
+
+2. TaskKind: CRITICAL — Classify the input as either:
+   - "event": A live event that happens at a specific time that the user must ATTEND (meetings, calls, appointments, interviews, webinars, lectures, standups). For events, return the event time in EventStart and set Deadline to null.
+   - "task": Everything else — work to complete, things to submit, hackathon registrations, assignments, projects, personal tasks, etc. For tasks, set EventStart to null and return a work Deadline.
+   Rule: A hackathon/competition page is a TASK (with a registration deadline), NOT an event — even if it mentions a date.
+
+3. EventStart: If TaskKind is "event", return the ISO 8601 DateTime of when the event/meeting starts. Use Time-only Resolution below. Set to null for tasks.
+
+4. Deadline: ISO 8601 DateTime string.
+   - If TaskKind is "event": Set to null (the app auto-schedules a reminder 30 min before EventStart).
+   - If TaskKind is "task": This is the work deadline — when the task/submission/registration must be done by.
+   - Time-only Resolution: If a specific time (e.g., '10 AM') is mentioned without a day, compare it to current local time:
+     - If that time has already passed today → deadline is TOMORROW at that time.
+     - If that time is still ahead today → deadline is TODAY at that time.
+   - Default: If no deadline can be inferred for a task, set to TOMORROW at 5:00 PM. Never return null for tasks.
+
+5. EstimatedHours: Total hours required. Estimate reasonably (0.5–10h).
+6. Priority: low, medium, or high.
+7. Type: Category — "Meeting", "Writing", "Programming", "Admin", "Learning", "Hackathon", "Event", etc.
+8. IsVague: true if extremely ambiguous. If true, put a clarifying question in ClarifyingQuestion and leave subtasks empty.
+9. ClarifyingQuestion: Single actionable question if isVague is true. Else "".
+10. Subtasks: 3–6 actionable subtasks, each with 'title' and 'durationHours'. Empty if isVague or if TaskKind is event.
+11. Confidence: decimal 0.0–1.0.
+12. RegistrationLink: Extract the direct registration/apply URL if the page/text is about a hackathon, contest, webinar, or job application. Set to null if none.
+13. Prizes: Hackathon/competition prize details. Set to null if none.
+14. Eligibility: Participant eligibility requirements. Set to null if none.
+15. Location: Event location ("Online", "Hybrid", city). Set to null if none.
 
 Return the JSON matching the required schema.
 `;
@@ -543,7 +654,7 @@ Return the JSON matching the required schema.
         ];
       }
 
-      return {
+      return normalizeCapturedTask(userInput, {
         title,
         deadline,
         estimatedHours,
@@ -553,11 +664,13 @@ Return the JSON matching the required schema.
         clarifyingQuestion: rawParsed.clarifyingQuestion || "",
         confidence: 0.95,
         subtasks,
-        registrationLink: rawParsed.registrationLink || rawParsed.url || rawParsed.link || null,
+        taskKind: rawParsed.taskKind || rawParsed.task_kind || null,
+        eventStart: rawParsed.eventStart || rawParsed.event_start || rawParsed.startTime || null,
+        registrationLink: rawParsed.registrationLink || rawParsed.registration_link || rawParsed.url || rawParsed.link || null,
         prizes: rawParsed.prizes || rawParsed.prize || rawParsed.rewards || null,
         eligibility: rawParsed.eligibility || rawParsed.eligible || null,
         location: rawParsed.location || rawParsed.place || null
-      };
+      });
     } catch (groqErr) {
       console.warn("Groq cloud parser failed, falling back:", groqErr.message);
     }
@@ -568,18 +681,19 @@ Return the JSON matching the required schema.
     const offlinePreference = localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu";
     if (offlinePreference === "heuristics") {
       console.info("Using fast local deterministic parser per user preference.");
-      return parseTaskLocally(userInput, "User preference: Fast Heuristics");
+      return normalizeCapturedTask(userInput, parseTaskLocally(userInput, "User preference: Fast Heuristics"));
     }
 
     console.warn("Gemini API key is missing. Trying local offline LLM...");
     try {
       // 1. Try local WebLLM directly inside browser (WebGPU accelerated)
       if (navigator.gpu) {
-        return await withTimeout(
+        const parsed = await withTimeout(
           queryInBrowserLLM(userInput, currentLocalTime, onProgress),
           7000,
           "In-browser GPU model compilation timeout"
         );
+        return normalizeCapturedTask(userInput, parsed);
       }
     } catch (webLlmErr) {
       console.warn("In-browser WebLLM failed, trying fallback LLMs:", webLlmErr.message);
@@ -587,10 +701,10 @@ Return the JSON matching the required schema.
 
     try {
       // 2. Try local Ollama endpoint next
-      return await queryLocalOfflineLLM(promptText);
+      return normalizeCapturedTask(userInput, await queryLocalOfflineLLM(promptText));
     } catch {
       console.warn("No local offline LLM active. Using local deterministic parser fallback.");
-      return parseTaskLocally(userInput, "API Key missing in Settings; Local LLMs failed");
+      return normalizeCapturedTask(userInput, parseTaskLocally(userInput, "API Key missing in Settings; Local LLMs failed"));
     }
   }
 
@@ -619,20 +733,22 @@ Return the JSON matching the required schema.
             type: "OBJECT",
             properties: {
               title: { type: "STRING" },
+              taskKind: { type: "STRING", enum: ["task", "event"], description: "Classify as 'event' if user must attend at a specific time (meeting, call, webinar), else 'task'" },
+              eventStart: { type: "STRING", description: "ISO 8601 datetime when the event starts. Only for events, null for tasks." },
               deadline: { 
                 type: "STRING", 
-                description: "ISO 8601 datetime string. Use year 2026. If no deadline is specified or inferred, return null." 
+                description: "ISO 8601 task deadline (when work must be done). For events set to null. For tasks never return null - default to tomorrow at 5PM if unknown." 
               },
               estimatedHours: { type: "NUMBER", description: "Total estimated hours to complete the task" },
               priority: { type: "STRING", enum: ["low", "medium", "high"] },
-              type: { type: "STRING", description: "Category: e.g. Writing, Programming, Admin, Learning, Event" },
-              isVague: { type: "BOOLEAN", description: "True if the task title is vague or lacks clear outcome (e.g. 'do homework' or 'study')" },
-              clarifyingQuestion: { type: "STRING", description: "Single simple question if task is vague, else empty" },
+              type: { type: "STRING", description: "Category: Meeting, Writing, Programming, Admin, Learning, Hackathon, Event, etc." },
+              isVague: { type: "BOOLEAN", description: "True if the task is too vague to act on (e.g. 'do homework' or 'study')" },
+              clarifyingQuestion: { type: "STRING", description: "Single simple question if task is vague, else empty string" },
               confidence: { type: "NUMBER", description: "Confidence of extraction, between 0.0 and 1.0" },
-              registrationLink: { type: "STRING", description: "Extracted URL link for registering or applying, or null" },
-              prizes: { type: "STRING", description: "Extracted contest prizes or cash pool, or null" },
-              eligibility: { type: "STRING", description: "Extracted eligibility requirements, or null" },
-              location: { type: "STRING", description: "Extracted location (e.g. Online, Hybrid, Bangalore), or null" },
+              registrationLink: { type: "STRING", description: "Direct registration/apply URL for hackathons, contests, webinars. Null if none." },
+              prizes: { type: "STRING", description: "Hackathon/competition prize details, or null" },
+              eligibility: { type: "STRING", description: "Participant eligibility requirements, or null" },
+              location: { type: "STRING", description: "Event location (Online, Hybrid, city), or null" },
               subtasks: {
                 type: "ARRAY",
                 items: {
@@ -645,7 +761,7 @@ Return the JSON matching the required schema.
                 },
               },
             },
-            required: ["title", "estimatedHours", "priority", "type", "isVague", "confidence", "subtasks"],
+            required: ["title", "taskKind", "estimatedHours", "priority", "type", "isVague", "confidence", "subtasks"],
           },
         },
       }),
@@ -663,10 +779,10 @@ Return the JSON matching the required schema.
       throw new Error("Received empty response from Gemini API.");
     }
 
-    return JSON.parse(textResponse);
+    return normalizeCapturedTask(userInput, JSON.parse(textResponse));
   } catch (err) {
     console.warn("Gemini API call failed. Falling back to local deterministic parser:", err.message);
-    return parseTaskLocally(userInput, err.message);
+    return normalizeCapturedTask(userInput, parseTaskLocally(userInput, err.message));
   }
 }
 
@@ -771,8 +887,12 @@ function parseTaskLocally(userInput, errorMsg) {
   // specific date like "june 30", "july 5", "30th june"
   const monthNames = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
   const monthMatch = normalized.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?/);
+  const explicitTime = resolveTimeOnlyReference(userInput);
+  const hasNamedWeekday = dayNames.some(day => normalized.includes(day));
 
-  if (normalized.includes("today")) {
+  if (explicitTime && !monthMatch && !inDaysMatch && !daysFromNowMatch && !nextWeekMatch && !endOfWeekMatch && !hasNamedWeekday) {
+    deadline = explicitTime.toISOString();
+  } else if (normalized.includes("today")) {
     const d = new Date(); d.setHours(17, 0, 0, 0);
     deadline = d.toISOString();
   } else if (normalized.includes("tonight")) {
@@ -1320,4 +1440,3 @@ Return the JSON matching the required schema.
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
   return JSON.parse(text);
 }
-

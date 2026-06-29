@@ -118,7 +118,7 @@ export default function Layout({ children }) {
     return () => unsub();
   }, [user]);
 
-  // Background deadline checker: sends email reminders 30 minutes before task deadlines
+  // Background reminder checker: deadlines alert 30 minutes early; events alert at reminderAt.
   useEffect(() => {
     if (!user || tasks.length === 0) return;
 
@@ -127,34 +127,50 @@ export default function Layout({ children }) {
       // Allow a small window (e.g. 28 to 32 minutes) to prevent skipping if browser sleep/lag occurs
       const WINDOW_START = 28 * 60 * 1000;
       const WINDOW_END = 32 * 60 * 1000;
+      const REMINDER_WINDOW_PAST = 60 * 1000;
+      const REMINDER_WINDOW_FUTURE = 2 * 60 * 1000;
 
       for (const task of tasks) {
-        if (task.status === "completed" || !task.deadline) continue;
+        if (task.status === "completed") continue;
 
-        const deadlineDate = task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline);
-        const timeDiff = deadlineDate.getTime() - now;
+        const isEvent = task.taskKind === "event";
+        const targetValue = isEvent ? task.reminderAt : task.deadline;
+        if (!targetValue) continue;
 
-        // If deadline is approximately 30 minutes away
-        if (timeDiff >= WINDOW_START && timeDiff <= WINDOW_END) {
-          const reminderKey = `deadlineiq_reminder_sent_${task.id}`;
+        const targetDate = targetValue.toDate ? targetValue.toDate() : new Date(targetValue);
+        const eventStartDate = task.eventStart
+          ? (task.eventStart.toDate ? task.eventStart.toDate() : new Date(task.eventStart))
+          : null;
+        const timeDiff = targetDate.getTime() - now;
+        const shouldSend = isEvent
+          ? timeDiff >= -REMINDER_WINDOW_PAST && timeDiff <= REMINDER_WINDOW_FUTURE
+          : timeDiff >= WINDOW_START && timeDiff <= WINDOW_END;
+
+        if (shouldSend) {
+          const reminderKey = `deadlineiq_${isEvent ? "event" : "deadline"}_reminder_sent_${task.id}`;
           const alreadySent = localStorage.getItem(reminderKey);
 
           if (!alreadySent) {
             try {
               localStorage.setItem(reminderKey, "true"); // mark as sent immediately to prevent race conditions
-              console.info(`Triggering 30-minute email reminder for task: "${task.title}"`);
+              console.info(`Triggering ${isEvent ? "event" : "deadline"} reminder for "${task.title}"`);
               
-              const subject = `⏳ Reminder: "${task.title}" is due in 30 minutes!`;
+              const subject = isEvent
+                ? `Reminder: "${task.title}" starts in 30 minutes`
+                : `⏳ Reminder: "${task.title}" is due in 30 minutes!`;
               const htmlBody = `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FAFAFA;">
                   <h2 style="color: #1E293B; margin-top: 0; font-size: 20px; font-weight: 800; border-bottom: 2px solid #EF4444; padding-bottom: 12px;">
-                    30-Minute Deadline Alert
+                    ${isEvent ? "30-Minute Meeting Reminder" : "30-Minute Deadline Alert"}
                   </h2>
                   <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-                    This is a reminder that your task <strong>"${task.title}"</strong> is due in <strong>30 minutes</strong> (${deadlineDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}).
+                    ${isEvent
+                      ? `This is a reminder that <strong>"${task.title}"</strong> starts at <strong>${eventStartDate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || "the scheduled time"}</strong>.`
+                      : `This is a reminder that your task <strong>"${task.title}"</strong> is due in <strong>30 minutes</strong> (${targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}).`
+                    }
                   </p>
                   <p style="font-size: 13px; color: #64748B;">
-                    Open your workspace to review subtasks and finalize your progress.
+                    ${isEvent ? "Open your workspace to review details before it starts." : "Open your workspace to review subtasks and finalize your progress."}
                   </p>
                   <div style="margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
                     <a href="https://deadlineiq-6321f.web.app" style="display: inline-block; background-color: #EF4444; color: #FFFFFF; font-weight: bold; font-size: 12px; text-decoration: none; padding: 10px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -165,9 +181,9 @@ export default function Layout({ children }) {
               `;
 
               await sendEmailNotification(subject, htmlBody);
-              addToast(`30-minute reminder email sent for "${task.title}"!`, { type: "info" });
+              addToast(`${isEvent ? "Meeting" : "30-minute"} reminder email sent for "${task.title}"!`, { type: "info" });
             } catch (err) {
-              console.error("Failed to send 30-minute email reminder:", err);
+              console.error("Failed to send reminder email:", err);
               localStorage.removeItem(reminderKey); // allow retry
             }
           }

@@ -106,7 +106,7 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
 
   // Realism Checks
   const getRealismWarning = () => {
-    if (!parsedTask || !parsedTask.deadline) return null;
+    if (!parsedTask || parsedTask.taskKind === "event" || !parsedTask.deadline) return null;
     const deadlineDate = new Date(parsedTask.deadline);
     const now = new Date();
     const diffMs = deadlineDate - now;
@@ -128,7 +128,7 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
 
   // Conflict Checks
   const getConflictWarning = () => {
-    if (!parsedTask || !parsedTask.deadline || !existingTasks) return null;
+    if (!parsedTask || parsedTask.taskKind === "event" || !parsedTask.deadline || !existingTasks) return null;
     const targetTime = new Date(parsedTask.deadline).getTime();
     const WINDOW_MS = 1.5 * 60 * 60 * 1000; // 1.5 hours window
 
@@ -148,12 +148,19 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
   const handleConfirmSave = () => {
     if (!parsedTask) return;
     
-    // Construct final task doc
     const deadlineVal = parsedTask.deadline ? new Date(parsedTask.deadline) : null;
+    const eventStartVal = parsedTask.eventStart ? new Date(parsedTask.eventStart) : null;
+    const reminderAtVal = parsedTask.reminderAt ? new Date(parsedTask.reminderAt) : null;
+
     onSaveTask({
       title: parsedTask.title,
       deadline: deadlineVal,
-      estimatedHours: Math.round(totalSubtaskHours * 10) / 10,
+      eventStart: eventStartVal,
+      reminderAt: reminderAtVal,
+      taskKind: parsedTask.taskKind || "task",
+      estimatedHours: parsedTask.taskKind === "event"
+        ? (parsedTask.estimatedHours || 0.5)
+        : Math.round(totalSubtaskHours * 10) / 10,
       priority: parsedTask.priority || "medium",
       type: parsedTask.type || "General",
       registrationLink: parsedTask.registrationLink || null,
@@ -323,14 +330,32 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
                   />
                 </div>
                 <div>
-                  <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">Deadline</span>
+                  <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                    {parsedTask.taskKind === "event" ? "Event Time" : "Deadline"}
+                  </span>
                   <input
                     type="datetime-local"
-                    value={parsedTask.deadline ? parsedTask.deadline.slice(0, 16) : ""}
-                    onChange={(e) => setParsedTask({ ...parsedTask, deadline: e.target.value })}
+                    value={(parsedTask.taskKind === "event" ? parsedTask.eventStart : parsedTask.deadline)?.slice(0, 16) || ""}
+                    onChange={(e) => {
+                      if (parsedTask.taskKind === "event") {
+                        const eventStart = e.target.value;
+                        const reminderAt = eventStart ? new Date(new Date(eventStart).getTime() - 30 * 60 * 1000).toISOString() : null;
+                        setParsedTask({ ...parsedTask, eventStart, reminderAt, deadline: null });
+                      } else {
+                        setParsedTask({ ...parsedTask, deadline: e.target.value });
+                      }
+                    }}
                     className="bg-transparent text-xs font-semibold text-slate-300 focus:text-white border-b border-transparent focus:border-slate-700 outline-none py-0.5"
                   />
                 </div>
+                {parsedTask.taskKind === "event" && parsedTask.reminderAt && (
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">Reminder</span>
+                    <div className="text-xs font-semibold text-teal-300 py-0.5">
+                      {new Date(parsedTask.reminderAt).toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" })}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-widest">Category</span>
                   <input

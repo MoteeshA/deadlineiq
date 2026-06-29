@@ -3,7 +3,7 @@
   "name": "DeadlineIQ Companion",
   "version": "1.0.0",
   "description": "Proactive anti-procrastination browser companion for DeadlineIQ.",
-  "permissions": ["activeTab", "contextMenus", "notifications", "storage"],
+  "permissions": ["activeTab", "contextMenus", "notifications", "storage", "scripting"],
   "background": {
     "service_worker": "background.js"
   },

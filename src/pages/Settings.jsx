@@ -4,7 +4,6 @@ import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   getDocs,
-  doc,
 } from "firebase/firestore";
 import { useToast } from "../context/ToastContext";
 
@@ -20,12 +19,6 @@ export default function Settings() {
   );
   const [elevenLabsVoice, setElevenLabsVoice] = useState(
     localStorage.getItem("deadlineiq_elevenlabs_voice_id") || "21m00Tcm4TlvDq8ikWAM"
-  );
-  const [resendKey, setResendKey] = useState(
-    localStorage.getItem("deadlineiq_resend_api_key") || ""
-  );
-  const [resendEmail, setResendEmail] = useState(
-    localStorage.getItem("deadlineiq_resend_recipient_email") || ""
   );
   const [offlinePreference, setOfflinePreference] = useState(
     localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu"
@@ -153,13 +146,6 @@ export default function Settings() {
     localStorage.setItem("deadlineiq_elevenlabs_api_key", elevenLabsKey.trim());
     localStorage.setItem("deadlineiq_elevenlabs_voice_id", elevenLabsVoice.trim());
     addToast("ElevenLabs voice credentials saved! 🗣️", { type: "success" });
-  };
-
-  const handleSaveResend = (e) => {
-    e.preventDefault();
-    localStorage.setItem("deadlineiq_resend_api_key", resendKey.trim());
-    localStorage.setItem("deadlineiq_resend_recipient_email", resendEmail.trim());
-    addToast("Resend notifications configured successfully! 📧", { type: "success" });
   };
 
   return (

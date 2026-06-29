@@ -20,6 +20,13 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
   const deadlineDate = task.deadline
     ? (task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline))
     : null;
+  const eventStartDate = task.eventStart
+    ? (task.eventStart.toDate ? task.eventStart.toDate() : new Date(task.eventStart))
+    : null;
+  const reminderAtDate = task.reminderAt
+    ? (task.reminderAt.toDate ? task.reminderAt.toDate() : new Date(task.reminderAt))
+    : null;
+  const isEvent = task.taskKind === "event";
   const now = new Date();
   const isOverdue = deadlineDate && deadlineDate < now && task.status !== "completed";
   const diffHours = deadlineDate ? (deadlineDate - now) / (1000 * 60 * 60) : Infinity;
@@ -165,7 +172,7 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
       )}
 
       {/* Local Neural Network Procrastination Risk Forecast */}
-      {task.status !== "completed" && (
+      {task.status !== "completed" && !isEvent && (
         <div className="mb-4 bg-slate-950/40 border border-slate-850 p-3.5 rounded-xl flex flex-col gap-2">
           <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
             <div className="flex items-center gap-1.5">
@@ -217,7 +224,12 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
           )}
-          <span>{formatDeadline(deadlineDate)}</span>
+          <span>
+            {isEvent && eventStartDate
+              ? `Meeting at ${eventStartDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}${reminderAtDate ? ` · Reminder ${reminderAtDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}` : ""}`
+              : formatDeadline(deadlineDate)
+            }
+          </span>
         </div>
 
         {/* Action Buttons */}
