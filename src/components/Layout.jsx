@@ -118,73 +118,123 @@ export default function Layout({ children }) {
     return () => unsub();
   }, [user]);
 
-  // Background reminder checker: deadlines alert 30 minutes early; events alert at reminderAt.
+  // Background reminder checker: 1 day, 3 hours, and 30 minutes reminders for all tasks & events.
   useEffect(() => {
     if (!user || tasks.length === 0) return;
 
     const checkDeadlines = async () => {
       const now = Date.now();
-      // Allow a small window (e.g. 28 to 32 minutes) to prevent skipping if browser sleep/lag occurs
-      const WINDOW_START = 28 * 60 * 1000;
-      const WINDOW_END = 32 * 60 * 1000;
-      const REMINDER_WINDOW_PAST = 60 * 1000;
-      const REMINDER_WINDOW_FUTURE = 2 * 60 * 1000;
+
+      const tiers = [
+        {
+          id: "1day",
+          label: "1-day",
+          windowStart: 23 * 60 * 60 * 1000 + 58 * 60 * 1000,
+          windowEnd: 24 * 60 * 60 * 1000 + 2 * 60 * 1000,
+          subject: (title, isEvent) => `⏰ 1-Day Reminder: "${title}" ${isEvent ? "starts" : "is due"} tomorrow!`,
+          body: (title, isEvent, timeStr) => `This is a reminder that <strong>"${title}"</strong> ${isEvent ? "starts" : "is due"} in <strong>1 day</strong> (${timeStr}).`
+        },
+        {
+          id: "3hours",
+          label: "3-hour",
+          windowStart: 2 * 60 * 60 * 1000 + 58 * 60 * 1000,
+          windowEnd: 3 * 60 * 60 * 1000 + 2 * 60 * 1000,
+          subject: (title, isEvent) => `⏳ 3-Hour Alert: "${title}" ${isEvent ? "starts" : "is due"} in 3 hours!`,
+          body: (title, isEvent, timeStr) => `This is a reminder that <strong>"${title}"</strong> ${isEvent ? "starts" : "is due"} in <strong>3 hours</strong> (${timeStr}).`
+        },
+        {
+          id: "30mins",
+          label: "30-minute",
+          windowStart: 28 * 60 * 1000,
+          windowEnd: 32 * 60 * 1000,
+          subject: (title, isEvent) => `⚠️ Urgent Reminder: "${title}" ${isEvent ? "starts" : "is due"} in 30 minutes!`,
+          body: (title, isEvent, timeStr) => `This is a reminder that your task/event <strong>"${title}"</strong> ${isEvent ? "starts" : "is due"} in <strong>30 minutes</strong> (${timeStr}).`
+        }
+      ];
 
       for (const task of tasks) {
         if (task.status === "completed") continue;
 
         const isEvent = task.taskKind === "event";
-        const targetValue = isEvent ? task.reminderAt : task.deadline;
+        const targetValue = isEvent ? task.eventStart : task.deadline;
         if (!targetValue) continue;
 
         const targetDate = targetValue.toDate ? targetValue.toDate() : new Date(targetValue);
-        const eventStartDate = task.eventStart
-          ? (task.eventStart.toDate ? task.eventStart.toDate() : new Date(task.eventStart))
-          : null;
         const timeDiff = targetDate.getTime() - now;
-        const shouldSend = isEvent
-          ? timeDiff >= -REMINDER_WINDOW_PAST && timeDiff <= REMINDER_WINDOW_FUTURE
-          : timeDiff >= WINDOW_START && timeDiff <= WINDOW_END;
+        const timeStr = targetDate.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
 
-        if (shouldSend) {
-          const reminderKey = `deadlineiq_${isEvent ? "event" : "deadline"}_reminder_sent_${task.id}`;
-          const alreadySent = localStorage.getItem(reminderKey);
+        for (const tier of tiers) {
+          if (timeDiff >= tier.windowStart && timeDiff <= tier.windowEnd) {
+            const reminderKey = `deadlineiq_${tier.id}_reminder_sent_${task.id}`;
+            const alreadySent = localStorage.getItem(reminderKey);
 
-          if (!alreadySent) {
-            try {
-              localStorage.setItem(reminderKey, "true"); // mark as sent immediately to prevent race conditions
-              console.info(`Triggering ${isEvent ? "event" : "deadline"} reminder for "${task.title}"`);
-              
-              const subject = isEvent
-                ? `Reminder: "${task.title}" starts in 30 minutes`
-                : `⏳ Reminder: "${task.title}" is due in 30 minutes!`;
-              const htmlBody = `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FAFAFA;">
-                  <h2 style="color: #1E293B; margin-top: 0; font-size: 20px; font-weight: 800; border-bottom: 2px solid #EF4444; padding-bottom: 12px;">
-                    ${isEvent ? "30-Minute Meeting Reminder" : "30-Minute Deadline Alert"}
-                  </h2>
-                  <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-                    ${isEvent
-                      ? `This is a reminder that <strong>"${task.title}"</strong> starts at <strong>${eventStartDate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || "the scheduled time"}</strong>.`
-                      : `This is a reminder that your task <strong>"${task.title}"</strong> is due in <strong>30 minutes</strong> (${targetDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}).`
-                    }
-                  </p>
-                  <p style="font-size: 13px; color: #64748B;">
-                    ${isEvent ? "Open your workspace to review details before it starts." : "Open your workspace to review subtasks and finalize your progress."}
-                  </p>
-                  <div style="margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
-                    <a href="https://deadlineiq-6321f.web.app" style="display: inline-block; background-color: #EF4444; color: #FFFFFF; font-weight: bold; font-size: 12px; text-decoration: none; padding: 10px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
-                      Open Live Workspace
-                    </a>
+            if (!alreadySent) {
+              try {
+                localStorage.setItem(reminderKey, "true"); // mark as sent immediately to prevent race conditions
+                console.info(`Triggering ${tier.label} reminder for "${task.title}"`);
+
+                const subject = tier.subject(task.title, isEvent);
+                const messageBody = tier.body(task.title, isEvent, timeStr);
+
+                const htmlBody = `
+                  <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FAFAFA;">
+                    <h2 style="color: #1E293B; margin-top: 0; font-size: 20px; font-weight: 800; border-bottom: 2px solid #6366F1; padding-bottom: 12px;">
+                      DeadlineIQ Reminder Alert
+                    </h2>
+                    <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                      ${messageBody}
+                    </p>
+                    
+                    <div style="background-color: #F8FAFC; border-left: 4px solid #6366F1; padding: 16px; margin: 20px 0; border-radius: 8px;">
+                      <h3 style="color: #0F172A; margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Details
+                      </h3>
+                      <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #475569;">
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold; width: 120px;">Task Title:</td>
+                          <td style="padding: 4px 0; color: #1E293B; font-weight: bold;">${task.title}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold;">Scheduled Time:</td>
+                          <td style="padding: 4px 0;">${timeStr}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold;">Est. Effort:</td>
+                          <td style="padding: 4px 0;">${task.estimatedHours || 2}h</td>
+                        </tr>
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold;">Priority:</td>
+                          <td style="padding: 4px 0; text-transform: uppercase;">${task.priority || "medium"}</td>
+                        </tr>
+                        ${task.prizes ? `
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold;">Prizes:</td>
+                          <td style="padding: 4px 0; color: #D97706; font-weight: bold;">🏆 ${task.prizes}</td>
+                        </tr>
+                        ` : ""}
+                        ${task.location ? `
+                        <tr>
+                          <td style="padding: 4px 0; font-weight: bold;">Location:</td>
+                          <td style="padding: 4px 0;">📍 ${task.location}</td>
+                        </tr>
+                        ` : ""}
+                      </table>
+                    </div>
+                    
+                    <div style="margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
+                      <a href="https://deadlineiq-6321f.web.app" style="display: inline-block; background-color: #6366F1; color: #FFFFFF; font-weight: bold; font-size: 12px; text-decoration: none; padding: 10px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Open Live Workspace
+                      </a>
+                    </div>
                   </div>
-                </div>
-              `;
+                `;
 
-              await sendEmailNotification(subject, htmlBody);
-              addToast(`${isEvent ? "Meeting" : "30-minute"} reminder email sent for "${task.title}"!`, { type: "info" });
-            } catch (err) {
-              console.error("Failed to send reminder email:", err);
-              localStorage.removeItem(reminderKey); // allow retry
+                await sendEmailNotification(subject, htmlBody);
+                addToast(`${tier.label} reminder email sent for "${task.title}"!`, { type: "info" });
+              } catch (err) {
+                console.error(`Failed to send ${tier.label} reminder email:`, err);
+                localStorage.removeItem(reminderKey); // allow retry
+              }
             }
           }
         }
