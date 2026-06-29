@@ -1,19 +1,103 @@
+/**
+ * Queries local offline LLM (Ollama or Chrome Built-in Gemini Nano) for task parsing.
+ */
+async function queryLocalOfflineLLM(promptText) {
+  // 1. Try local Ollama endpoint (OpenAI compatible completions endpoint)
+  try {
+    const response = await fetch("http://localhost:11434/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemma2" || "gemma" || "llama3",
+        messages: [{ role: "user", content: promptText }],
+        response_format: { type: "json_object" }
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      return JSON.parse(text);
+    }
+  } catch (ollamaErr) {
+    console.warn("Ollama is not running locally for offline tasks:", ollamaErr.message);
+  }
+
+  // 2. Try Chrome Built-in Gemini Nano (window.ai)
+  try {
+    if (window.ai && window.ai.assistant) {
+      const session = await window.ai.assistant.create();
+      const rawResponse = await session.prompt(promptText);
+      const jsonStart = rawResponse.indexOf("{");
+      const jsonEnd = rawResponse.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        const jsonStr = rawResponse.substring(jsonStart, jsonEnd + 1);
+        return JSON.parse(jsonStr);
+      }
+    }
+  } catch (chromeAiErr) {
+    console.warn("Chrome Built-in AI is not available for offline tasks:", chromeAiErr.message);
+  }
+
+  throw new Error("No local offline LLM active");
+}
+
+/**
+ * Queries local offline LLM for conversational chatbot replies.
+ */
+async function chatWithLocalOfflineLLM(promptText) {
+  // 1. Try Ollama local completions
+  try {
+    const response = await fetch("http://localhost:11434/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemma2" || "gemma" || "llama3",
+        messages: [{ role: "user", content: promptText }],
+        response_format: { type: "json_object" }
+      })
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      return JSON.parse(text);
+    }
+  } catch (ollamaErr) {
+    console.warn("Ollama chat fallback failed:", ollamaErr.message);
+  }
+
+  // 2. Try Chrome Built-in Gemini Nano
+  try {
+    if (window.ai && window.ai.assistant) {
+      const session = await window.ai.assistant.create();
+      const rawResponse = await session.prompt(promptText);
+      const jsonStart = rawResponse.indexOf("{");
+      const jsonEnd = rawResponse.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        const jsonStr = rawResponse.substring(jsonStart, jsonEnd + 1);
+        return JSON.parse(jsonStr);
+      }
+    }
+  } catch (chromeAiErr) {
+    console.warn("Chrome AI chat fallback failed:", chromeAiErr.message);
+  }
+
+  throw new Error("No local offline LLM available for chat");
+}
+
 export async function parseTaskWithGemini(userInput) {
   // 1. Get API Key (Settings storage or fallback to Env)
   const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("Gemini API key is missing. Using local deterministic parser fallback.");
-    return parseTaskLocally(userInput, "API Key missing in Settings");
-  }
-
-  // 2. Format current time context
+  
+  // Format current time context
   const now = new Date();
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const dayName = days[now.getDay()];
   const currentLocalTime = `${dayName}, ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
   const promptText = `
- You are the intelligence engine of DeadlineIQ, an anti-procrastination task manager.
+You are the intelligence engine of DeadlineIQ, an anti-procrastination task manager.
 Your job is to parse a natural language task description, extract core metadata, determine if it is vague, and break it down into actionable subtasks.
 
 User's Task Description: "${userInput}"
@@ -39,6 +123,16 @@ Schema Guidelines:
 
 Return the JSON matching the required schema.
 `;
+
+  if (!apiKey) {
+    console.warn("Gemini API key is missing. Trying local offline LLM...");
+    try {
+      return await queryLocalOfflineLLM(promptText);
+    } catch (err) {
+      console.warn("No local offline LLM active. Using local deterministic parser fallback.");
+      return parseTaskLocally(userInput, "API Key missing in Settings; Local LLM failed");
+    }
+  }
 
   // Updated to use the gemini-2.5-flash model on v1beta endpoint
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -533,17 +627,6 @@ Provide a predicted success percentage (between 10% and 99%) and exactly 2 sente
 
 export async function chatWithProductivityAgent(message, history, currentTasks, profile) {
   const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    return {
-      reply: "[Offline Mode] I'm here to help! Please configure your Gemini API Key in Settings to unlock task automation and coaching.",
-      action: { type: "NONE", payload: {} }
-    };
-  }
-
-  const serializedHistory = history.map(h => ({
-    role: h.role === "user" ? "user" : "model",
-    parts: [{ text: h.text }]
-  }));
 
   const activeTasks = currentTasks.map(t => ({
     id: t.id,
@@ -577,6 +660,24 @@ Actions Supported:
 Return a JSON matching the schema.
 User Message: "${message}"
 `;
+
+  if (!apiKey) {
+    console.warn("Gemini API key is missing. Trying local offline LLM for chat...");
+    try {
+      return await chatWithLocalOfflineLLM(promptText);
+    } catch (err) {
+      return {
+        reply: "[Offline Mode] I'm here to help! (To unlock intelligent coaching & local tasks, configure your Gemini API Key in Settings or run a local model like Ollama with 'gemma2'.)",
+        action: { type: "NONE", payload: {} }
+      };
+    }
+  }
+
+  const serializedHistory = history.map(h => ({
+    role: h.role === "user" ? "user" : "model",
+    parts: [{ text: h.text }]
+  }));
+
 
   const responseSchema = {
     type: "OBJECT",

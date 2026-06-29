@@ -99,6 +99,19 @@ export default function Extension() {
     return () => window.removeEventListener("paste", handlePaste);
   }, []);
 
+  // Dynamic loader for local browser OCR library (Tesseract.js)
+  const loadTesseract = async () => {
+    if (window.Tesseract) return window.Tesseract;
+    return new Promise((resolve, reject) => {
+      setStatusText("Connecting to local OCR CDN (Tesseract.js)...");
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+      script.onload = () => resolve(window.Tesseract);
+      script.onerror = () => reject(new Error("Failed to load local OCR library from CDN"));
+      document.head.appendChild(script);
+    });
+  };
+
   // File Processor (OCR + Vision + NLP)
   const processFile = async (file) => {
     setIsProcessing(true);
@@ -114,6 +127,36 @@ export default function Extension() {
           // PDF Mime fallback if standard reader misses it
           if (file.name.endsWith(".pdf")) {
             mimeType = "application/pdf";
+          }
+
+          const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
+          
+          if (!apiKey) {
+            if (mimeType.startsWith("image/")) {
+              setStatusText("No API Key found. Initializing local OCR engine (Tesseract)...");
+              const TesseractObj = await loadTesseract();
+              
+              setStatusText("Running local OCR character recognition...");
+              const ocrResult = await TesseractObj.recognize(reader.result, 'eng', {
+                logger: m => {
+                  if (m.status === "recognizing") {
+                    setStatusText(`Local OCR: processing image (${Math.round(m.progress * 100)}%)...`);
+                  }
+                }
+              });
+
+              const extractedText = ocrResult.data.text;
+              if (!extractedText.trim()) {
+                throw new Error("Local OCR could not extract any readable text from the image.");
+              }
+
+              setStatusText("Extracting tasks from OCR text with local model...");
+              const parsedTask = await parseTaskWithGemini(`[Extracted from Screenshot/Image OCR]\n${extractedText}`);
+              await saveCapturedTask(parsedTask, `Offline Image OCR: ${file.name}`);
+              return;
+            } else {
+              throw new Error("Offline file ingestion only supports images (PNG, JPG). PDFs require a Gemini API Key.");
+            }
           }
 
           const parsedTask = await parseMediaWithGemini(base64Data, mimeType);
