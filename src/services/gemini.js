@@ -86,8 +86,7 @@ Format the response as a single valid JSON object. Do not include extra conversa
   const response = await webLlmEngine.chat.completions.create({
     messages: [
       { role: "user", content: simplifiedPrompt }
-    ],
-    response_format: { type: "json_object" }
+    ]
   });
 
   const content = response.choices[0].message.content;
