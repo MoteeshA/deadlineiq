@@ -215,7 +215,7 @@ async function queryLocalOfflineLLM(promptText) {
 }
 
 export async function callGroqJson({ promptText, apiKey, model = GROQ_CHAT_MODEL, systemText = "You are DeadlineIQ's structured JSON engine." }) {
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetch("https://corsproxy.io/?https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -238,9 +238,15 @@ export async function callGroqJson({ promptText, apiKey, model = GROQ_CHAT_MODEL
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = data.choices?.[0]?.message?.content || "";
   if (!content) throw new Error("Empty response from Groq.");
-  return JSON.parse(content);
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    const jsonStr = content.substring(jsonStart, jsonEnd + 1);
+    return JSON.parse(jsonStr);
+  }
+  throw new Error("Could not find valid JSON in Groq response");
 }
 
 async function callGeminiJson({ promptText, apiKey, responseSchema }) {
@@ -582,7 +588,7 @@ Return the JSON matching the required schema.
     try {
       // 2. Try local Ollama endpoint next
       return await queryLocalOfflineLLM(promptText);
-    } catch (err) {
+    } catch {
       console.warn("No local offline LLM active. Using local deterministic parser fallback.");
       return parseTaskLocally(userInput, "API Key missing in Settings; Local LLMs failed");
     }
@@ -1142,7 +1148,7 @@ User Message: "${message}"
     console.warn("Gemini API key is missing. Trying local offline LLM for chat...");
     try {
       return await chatWithLocalOfflineLLM(promptText);
-    } catch (err) {
+    } catch {
       return {
         reply: "[Offline Mode] I'm here to help! (To unlock intelligent coaching & local tasks, configure your Gemini API Key in Settings or run a local model like Ollama with 'gemma2'.)",
         action: { type: "NONE", payload: {} }
