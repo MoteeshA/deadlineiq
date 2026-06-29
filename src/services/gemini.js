@@ -497,7 +497,7 @@ Current Time Context:
 
 Schema Guidelines:
 1. Title: Extracted clean, concise name of the task.
-2. Deadline: ISO 8601 DateTime string. Resolve relative descriptors carefully. If NO deadline can be inferred, set to null.
+2. Deadline: ISO 8601 DateTime string. Resolve relative descriptors carefully relative to the Current Local Date/Time context. If a relative time (like '10AM') is given but no explicit day is specified, or if no deadline date is specified at all, default the deadline to TOMORROW (e.g. if today is Monday, June 29, set it to Tuesday, June 30 at the specified time or at 5:00 PM). Never return null.
 3. EstimatedHours: Total hours required. If user specifies "2h", return 2. If unspecified, make a reasonable estimate (e.g. 1 to 10 hours).
 4. Priority: low, medium, or high. Base this on urgency and gravity of the task.
 5. Type: Category, e.g. "Writing", "Programming", "Admin", "Learning", "Event", etc.

@@ -6,8 +6,9 @@ import { collection, addDoc, doc, updateDoc, serverTimestamp, onSnapshot } from 
 import AIAgentSidebar from "./AIAgentSidebar";
 import AISpeaker from "./AISpeaker";
 import { useToast } from "../context/ToastContext";
-import { checkAndTriggerEmail } from "../services/email";
-import { isWebLlmPreloaded, preloadWebLlm } from "../services/gemini";
+import { checkAndTriggerEmail, sendEmailNotification } from "../services/email";
+import { getConfiguredGeminiApiKey, getConfiguredGroqApiKey, isWebLlmPreloaded, preloadWebLlm } from "../services/gemini";
+import TimelineCanvas from "./TimelineCanvas";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -17,9 +18,11 @@ export default function Layout({ children }) {
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
 
   const [llmStatus, setLlmStatus] = useState(isWebLlmPreloaded() ? "Ready" : "Idle");
-  const [apiKeyExists, setApiKeyExists] = useState(
-    !!(localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY)
-  );
+  const [cloudEngine, setCloudEngine] = useState(() => {
+    if (getConfiguredGroqApiKey()) return "Groq";
+    if (getConfiguredGeminiApiKey()) return "Gemini";
+    return "";
+  });
 
   const handlePreload = async () => {
     if (!navigator.gpu) {
@@ -46,6 +49,24 @@ export default function Layout({ children }) {
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  useEffect(() => {
+    const refreshCloudEngine = () => {
+      if (getConfiguredGroqApiKey()) setCloudEngine("Groq");
+      else if (getConfiguredGeminiApiKey()) setCloudEngine("Gemini");
+      else setCloudEngine("");
+    };
+
+    window.addEventListener("storage", refreshCloudEngine);
+    window.addEventListener("focus", refreshCloudEngine);
+    window.addEventListener("deadlineiq-ai-config-updated", refreshCloudEngine);
+    refreshCloudEngine();
+    return () => {
+      window.removeEventListener("storage", refreshCloudEngine);
+      window.removeEventListener("focus", refreshCloudEngine);
+      window.removeEventListener("deadlineiq-ai-config-updated", refreshCloudEngine);
+    };
   }, []);
 
   const [notifications, setNotifications] = useState([
@@ -96,6 +117,71 @@ export default function Layout({ children }) {
     });
     return () => unsub();
   }, [user]);
+
+  // Background deadline checker: sends email reminders 30 minutes before task deadlines
+  useEffect(() => {
+    if (!user || tasks.length === 0) return;
+
+    const checkDeadlines = async () => {
+      const now = Date.now();
+      // Allow a small window (e.g. 28 to 32 minutes) to prevent skipping if browser sleep/lag occurs
+      const WINDOW_START = 28 * 60 * 1000;
+      const WINDOW_END = 32 * 60 * 1000;
+
+      for (const task of tasks) {
+        if (task.status === "completed" || !task.deadline) continue;
+
+        const deadlineDate = task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline);
+        const timeDiff = deadlineDate.getTime() - now;
+
+        // If deadline is approximately 30 minutes away
+        if (timeDiff >= WINDOW_START && timeDiff <= WINDOW_END) {
+          const reminderKey = `deadlineiq_reminder_sent_${task.id}`;
+          const alreadySent = localStorage.getItem(reminderKey);
+
+          if (!alreadySent) {
+            try {
+              localStorage.setItem(reminderKey, "true"); // mark as sent immediately to prevent race conditions
+              console.info(`Triggering 30-minute email reminder for task: "${task.title}"`);
+              
+              const subject = `⏳ Reminder: "${task.title}" is due in 30 minutes!`;
+              const htmlBody = `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FAFAFA;">
+                  <h2 style="color: #1E293B; margin-top: 0; font-size: 20px; font-weight: 800; border-bottom: 2px solid #EF4444; padding-bottom: 12px;">
+                    30-Minute Deadline Alert
+                  </h2>
+                  <p style="font-size: 14px; color: #475569; line-height: 1.6;">
+                    This is a reminder that your task <strong>"${task.title}"</strong> is due in <strong>30 minutes</strong> (${deadlineDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}).
+                  </p>
+                  <p style="font-size: 13px; color: #64748B;">
+                    Open your workspace to review subtasks and finalize your progress.
+                  </p>
+                  <div style="margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
+                    <a href="https://deadlineiq-6321f.web.app" style="display: inline-block; background-color: #EF4444; color: #FFFFFF; font-weight: bold; font-size: 12px; text-decoration: none; padding: 10px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+                      Open Live Workspace
+                    </a>
+                  </div>
+                </div>
+              `;
+
+              await sendEmailNotification(subject, htmlBody);
+              addToast(`30-minute reminder email sent for "${task.title}"!`, { type: "info" });
+            } catch (err) {
+              console.error("Failed to send 30-minute email reminder:", err);
+              localStorage.removeItem(reminderKey); // allow retry
+            }
+          }
+        }
+      }
+    };
+
+    // Run check once on mount / tasks sync
+    checkDeadlines();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkDeadlines, 30000);
+    return () => clearInterval(interval);
+  }, [user, tasks, addToast]);
 
   const executeAgentAction = async (action) => {
     if (!user || !action || action.type === "NONE") return;
@@ -464,7 +550,14 @@ export default function Layout({ children }) {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 pb-24 md:pb-0 overflow-y-auto z-20 relative bg-[radial-gradient(circle_at_70%_20%,rgba(124,58,237,0.14),transparent_28%)]">
-        <div className="p-4 sm:p-6 md:p-6 max-w-[1500px] w-full mx-auto flex-1 flex flex-col">
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-30">
+          <div className="absolute right-[-14%] top-[-12%] h-[58vh] w-[72vw] min-w-[760px] rotate-[-8deg]">
+            <TimelineCanvas className="h-full min-h-[520px]" fit="cover" hint={false} />
+          </div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,#03030a_0%,rgba(3,3,10,0.76)_38%,rgba(3,3,10,0.92)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(167,139,250,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(167,139,250,0.035)_1px,transparent_1px)] bg-[size:44px_44px]" />
+        </div>
+        <div className="relative z-10 p-4 sm:p-6 md:p-6 max-w-[1500px] w-full mx-auto flex-1 flex flex-col">
            {location.pathname === "/dashboard" && (
             <div className="mb-5 rounded-[28px] border border-violet-300/18 bg-[#0b0820]/95 px-6 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md flex flex-col sm:flex-row justify-between sm:items-center gap-4">
               <div>
@@ -478,10 +571,10 @@ export default function Layout({ children }) {
 
               {/* Dynamic Local/Cloud AI Engine Status Indicator */}
               <div className="shrink-0">
-                {apiKeyExists ? (
+                {cloudEngine ? (
                   <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider select-none font-mono">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.6)]" />
-                    Cloud AI Engine Active
+                    {cloudEngine} Cloud AI Active
                   </div>
                 ) : llmStatus === "Ready" ? (
                   <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-wider select-none font-mono">
