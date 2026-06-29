@@ -25,10 +25,11 @@ export default function Extension() {
   const [statusText, setStatusText] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [recentTask, setRecentTask] = useState(null);
+  const [sourceUrl, setSourceUrl] = useState("");
   const dropRef = useRef(null);
 
-  // Bookmarklet Code
-  const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.open('https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text,'_blank','width=600,height=700,status=no,toolbar=no,menubar=no,location=no');})();`;
+  // Bookmarklet Code using redirection to guarantee bypass of popup blockers
+  const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.location.href='https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text;})();`;
 
   // Detect and process Bookmarklet Intake parameters on load
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function Extension() {
       const textParam = params.get("text");
 
       if (urlParam || titleParam || textParam) {
+        if (urlParam) setSourceUrl(urlParam);
         setIsProcessing(true);
         setStatusText("Bookmarklet received. Initializing AI Parsing Layer...");
         try {
@@ -50,8 +52,10 @@ export default function Extension() {
           
           setStatusText("Success! Opportunity logged in your board.");
           setTimeout(() => {
-            // Close the popup window automatically
-            window.close();
+            // Close popup if opened as popup, else stay
+            if (window.opener) {
+              window.close();
+            }
           }, 2000);
         } catch (err) {
           console.error("Bookmarklet capture failed:", err);
@@ -460,6 +464,16 @@ export default function Extension() {
               </div>
             </div>
           </div>
+          {sourceUrl && (
+            <div className="pt-2 text-right">
+              <a 
+                href={sourceUrl}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-650 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-indigo-500/10 cursor-pointer"
+              >
+                ← Return to Scraped Page
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>
