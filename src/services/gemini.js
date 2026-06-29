@@ -384,8 +384,14 @@ Format the response as a single valid JSON object. Do not include extra conversa
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
-  return JSON.parse(content);
+  const content = data.choices[0].message.content || "";
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    const jsonStr = content.substring(jsonStart, jsonEnd + 1);
+    return JSON.parse(jsonStr);
+  }
+  throw new Error("Could not find valid JSON in Groq response");
 }
 
 /**
@@ -453,8 +459,14 @@ Return a JSON matching the schema.
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
-  return JSON.parse(content);
+  const content = data.choices[0].message.content || "";
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    const jsonStr = content.substring(jsonStart, jsonEnd + 1);
+    return JSON.parse(jsonStr);
+  }
+  throw new Error("Could not find valid JSON in Groq response");
 }
 
 export async function parseTaskWithGemini(userInput, onProgress) {
@@ -462,11 +474,10 @@ export async function parseTaskWithGemini(userInput, onProgress) {
   const apiKey = getConfiguredGeminiApiKey();
   const groqApiKey = getConfiguredGroqApiKey();
   
-  // Format current time context
+  // Format current time context explicitly in readable English to avoid DD/MM vs MM/DD LLM confusions
   const now = new Date();
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const dayName = days[now.getDay()];
-  const currentLocalTime = `${dayName}, ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+  const currentLocalTime = now.toLocaleDateString('en-US', options);
 
   const promptText = `
 You are the intelligence engine of DeadlineIQ, an anti-procrastination task manager.
