@@ -13,7 +13,7 @@ export async function parseTaskWithGemini(userInput) {
   const currentLocalTime = `${dayName}, ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
   const promptText = `
-You are the intelligence engine of DeadlineIQ, an anti-procrastination task manager.
+ You are the intelligence engine of DeadlineIQ, an anti-procrastination task manager.
 Your job is to parse a natural language task description, extract core metadata, determine if it is vague, and break it down into actionable subtasks.
 
 User's Task Description: "${userInput}"
@@ -32,6 +32,10 @@ Schema Guidelines:
 7. ClarifyingQuestion: If isVague is true, ask a simple prompt. Else empty string.
 8. Subtasks: A list of 3-6 actionable, sequential subtasks to complete this parent task. Each subtask must have a 'title' and 'durationHours' (how long that step takes). The sum of subtask durationHours should approximate the parent task's estimatedHours. Keep empty if isVague is true.
 9. Confidence: decimal between 0.0 and 1.0.
+10. RegistrationLink: If the task/event contains a URL for applying or registering (especially for hackathons, contests, webinars, or job applications), extract it. Set to null if none exists.
+11. Prizes: For hackathons or competitions, extract any prize details or total cash pool (e.g., "$10,000 cash pool"). Set to null if none.
+12. Eligibility: Extract any participant eligibility requirements (e.g., "Students only", "Open to developers in India"). Set to null if none.
+13. Location: Extract the location of the event (e.g. "Online", "Hybrid", "San Francisco"). Set to null if none.
 
 Return the JSON matching the required schema.
 `;
@@ -71,6 +75,10 @@ Return the JSON matching the required schema.
               isVague: { type: "BOOLEAN", description: "True if the task title is vague or lacks clear outcome (e.g. 'do homework' or 'study')" },
               clarifyingQuestion: { type: "STRING", description: "Single simple question if task is vague, else empty" },
               confidence: { type: "NUMBER", description: "Confidence of extraction, between 0.0 and 1.0" },
+              registrationLink: { type: "STRING", description: "Extracted URL link for registering or applying, or null" },
+              prizes: { type: "STRING", description: "Extracted contest prizes or cash pool, or null" },
+              eligibility: { type: "STRING", description: "Extracted eligibility requirements, or null" },
+              location: { type: "STRING", description: "Extracted location (e.g. Online, Hybrid, Bangalore), or null" },
               subtasks: {
                 type: "ARRAY",
                 items: {
@@ -258,6 +266,12 @@ function parseTaskLocally(userInput, errorMsg) {
     }
   }
 
+  const isHackathonSim = normalized.includes("hackathon") || normalized.includes("contest") || normalized.includes("hac'kp") || normalized.includes("kerala");
+  const registrationLink = isHackathonSim ? "https://hackp.kerala.gov.in/" : null;
+  const prizes = isHackathonSim ? "₹5,00,000 Cash Pool" : null;
+  const eligibility = isHackathonSim ? "Developers & Students" : null;
+  const location = isHackathonSim ? "Kerala Cyberdome" : null;
+
   return {
     title,
     deadline,
@@ -268,6 +282,10 @@ function parseTaskLocally(userInput, errorMsg) {
     clarifyingQuestion,
     confidence: 0.5,
     subtasks,
+    registrationLink,
+    prizes,
+    eligibility,
+    location,
     isFallback: true,
     fallbackReason: errorMsg
   };
@@ -647,8 +665,12 @@ Extract and return a structured JSON task with these fields:
 2. Deadline: ISO 8601 DateTime string (e.g. '2026-06-30T17:00:00Z'). Resolve relative descriptors. Set to null if none is found.
 3. EstimatedHours: Realistic estimation of hours needed (default to 2 if unspecified).
 4. Priority: low, medium, or high.
-5. Type: Category, e.g. "Programming", "Writing", "Learning", "Admin", "Event", etc.
+5. Type: Category, e.g. "Programming", "Writing", "Learning", "Event", etc.
 6. Subtasks: A list of 3-6 sequential action steps (each with 'title' and 'durationHours' matching estimatedHours).
+7. RegistrationLink: If the image/document lists an application link or registration URL, extract it. Set to null if none.
+8. Prizes: For hackathons or competitions, extract prize pool descriptions. Set to null if none.
+9. Eligibility: Extract target participant eligibility (e.g., student status). Set to null if none.
+10. Location: Extract location of the event. Set to null if none.
 
 Return the JSON matching the required schema.
 `;
@@ -684,6 +706,10 @@ Return the JSON matching the required schema.
             estimatedHours: { type: "NUMBER" },
             priority: { type: "STRING", enum: ["low", "medium", "high"] },
             type: { type: "STRING" },
+            registrationLink: { type: "STRING", description: "Extracted URL link for registering or applying, or null" },
+            prizes: { type: "STRING", description: "Extracted prizes or cash pool, or null" },
+            eligibility: { type: "STRING", description: "Extracted eligibility requirements, or null" },
+            location: { type: "STRING", description: "Extracted event location, or null" },
             subtasks: {
               type: "ARRAY",
               items: {

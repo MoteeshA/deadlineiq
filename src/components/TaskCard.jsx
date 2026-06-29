@@ -95,6 +95,37 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
         {task.title}
       </h4>
 
+      {/* Hackathon/Opportunity Metadata Badges */}
+      {(task.prizes || task.eligibility || task.location || task.registrationLink) && (
+        <div className="mb-4 flex flex-wrap gap-2 pt-1">
+          {task.prizes && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none">
+              🏆 {task.prizes}
+            </span>
+          )}
+          {task.eligibility && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none">
+              👥 {task.eligibility}
+            </span>
+          )}
+          {task.location && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 select-none">
+              📍 {task.location}
+            </span>
+          )}
+          {task.registrationLink && (
+            <a 
+              href={task.registrationLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-indigo-500 text-white hover:bg-indigo-650 hover:scale-[1.03] active:scale-[0.98] transition cursor-pointer select-none border border-indigo-400/20"
+            >
+              🔗 Register Here
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Subtasks List */}
       {task.subtasks && task.subtasks.length > 0 && (
         <div className="mb-4 space-y-1.5 border-t border-slate-800/40 pt-3">

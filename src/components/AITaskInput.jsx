@@ -151,6 +151,10 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
       estimatedHours: Math.round(totalSubtaskHours * 10) / 10,
       priority: parsedTask.priority || "medium",
       type: parsedTask.type || "General",
+      registrationLink: parsedTask.registrationLink || null,
+      prizes: parsedTask.prizes || null,
+      eligibility: parsedTask.eligibility || null,
+      location: parsedTask.location || null,
       subtasks: subtasks.map(s => ({ title: s.title, durationHours: s.durationHours, completed: false })),
     });
 
