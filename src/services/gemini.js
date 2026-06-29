@@ -110,14 +110,45 @@ Return the JSON matching the required schema.
 
 function parseTaskLocally(userInput, errorMsg) {
   const normalized = userInput.toLowerCase();
+  let title = "";
   
+  // Clean title extraction for Bookmarklet/Multimodal inputs
+  if (userInput.includes("Page Title:")) {
+    const titleMatch = userInput.match(/Page Title:\s*([^\n\r]+?)(?=\s*(Content Summary:|$))/i);
+    if (titleMatch && titleMatch[1].trim()) {
+      title = titleMatch[1].trim();
+    }
+  }
+  
+  if (!title && userInput.includes("Source URL:")) {
+    const urlMatch = userInput.match(/Source URL:\s*([^\s]+)/i);
+    if (urlMatch) {
+      try {
+        const hostname = new URL(urlMatch[1]).hostname;
+        title = `Scraped Opportunity from ${hostname}`;
+      } catch {
+        title = "Scraped Opportunity";
+      }
+    }
+  }
+
+  // Fallback for general long descriptions
+  if (!title) {
+    if (userInput.length > 100) {
+      const firstLine = userInput.split(/[\n\r.]/)[0].trim();
+      title = firstLine.length > 80 ? firstLine.substring(0, 77) + "..." : firstLine || "Captured Opportunity";
+    } else {
+      title = userInput.replace(/\b(by|at|takes|priority|urgent|hours|h|hrs|high|low|medium)\b.*/gi, "").trim() || userInput;
+    }
+  }
+
   // 1. Is Vague check
   let isVague = false;
   let clarifyingQuestion = "";
   const vagueKeywords = ["study", "work", "do stuff", "something", "homework", "task"];
   if (vagueKeywords.some(w => normalized.trim() === w)) {
     isVague = true;
-    clarifyingQuestion = `What specific topic or action items are involved in "${userInput}"?`;
+    clarifyingQuestion = `What specific topic or action items are involved in "${userInput.substring(0, 30)}..."?`;
   }
 
   // 2. Priority check
@@ -228,7 +259,7 @@ function parseTaskLocally(userInput, errorMsg) {
   }
 
   return {
-    title: userInput.replace(/\b(by|at|takes|priority|urgent|hours|h|hrs|high|low|medium)\b.*/gi, "").trim() || userInput,
+    title,
     deadline,
     estimatedHours,
     priority,
