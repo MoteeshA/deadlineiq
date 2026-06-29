@@ -113,13 +113,21 @@ function classifyCaptureIntent(userInput, parsed) {
 
 function normalizeCapturedTask(userInput, parsed) {
   const intent = classifyCaptureIntent(userInput, parsed);
+  const resolvedTime = resolveTimeOnlyReference(userInput);
 
   if (intent === "event") {
     // For events (meetings, calls, etc.) — use eventStart from LLM or resolve from text
     const rawEventStart = parsed.eventStart || parsed.startTime || null;
     let eventStart = rawEventStart ? toIsoOrNull(rawEventStart) : null;
-    if (!eventStart) {
-      const resolvedTime = resolveTimeOnlyReference(userInput);
+    
+    if (eventStart) {
+      if (resolvedTime) {
+        const timeDate = new Date(resolvedTime);
+        const eventStartDate = new Date(eventStart);
+        eventStartDate.setHours(timeDate.getHours(), timeDate.getMinutes(), 0, 0);
+        eventStart = eventStartDate.toISOString();
+      }
+    } else {
       if (resolvedTime) {
         eventStart = resolvedTime;
       }
@@ -144,25 +152,22 @@ function normalizeCapturedTask(userInput, parsed) {
   // For regular tasks and hackathons — resolve deadline
   let deadline = parsed.deadline ? toIsoOrNull(parsed.deadline) : null;
   
-  const defaultTomorrow5PM = (() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(17, 0, 0, 0);
-    return tomorrow.toISOString();
-  })();
-
-  const isDefaultDeadline = deadline && (
-    new Date(deadline).getHours() === 17 &&
-    new Date(deadline).getMinutes() === 0 &&
-    Math.abs(new Date(deadline).getTime() - new Date(defaultTomorrow5PM).getTime()) < 5 * 60 * 1000
-  );
-
-  if (!deadline || isDefaultDeadline) {
-    const resolvedTime = resolveTimeOnlyReference(userInput);
+  if (deadline) {
+    if (resolvedTime) {
+      const timeDate = new Date(resolvedTime);
+      const deadlineDate = new Date(deadline);
+      deadlineDate.setHours(timeDate.getHours(), timeDate.getMinutes(), 0, 0);
+      deadline = deadlineDate.toISOString();
+    }
+  } else {
     if (resolvedTime) {
       deadline = resolvedTime;
-    } else if (!deadline) {
-      deadline = defaultTomorrow5PM;
+    } else {
+      // Default: tomorrow at 5 PM if no deadline was extracted or resolved
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(17, 0, 0, 0);
+      deadline = tomorrow.toISOString();
     }
   }
 
