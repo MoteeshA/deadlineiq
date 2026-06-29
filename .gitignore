@@ -25,3 +25,7 @@ dist-ssr
 
 # Video Demo (exceeds 100MB Git limit)
 public/IQ_FINAL.mp4
+
+# Environment Variables
+.env
+.env.local

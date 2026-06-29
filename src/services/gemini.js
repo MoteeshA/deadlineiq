@@ -268,9 +268,128 @@ async function chatWithLocalOfflineLLM(promptText) {
   throw new Error("No local offline LLM available for chat");
 }
 
+/**
+ * Queries Groq Cloud API for task parsing (super-fast, free, unlimited).
+ */
+async function queryGroqCloudLLM(userInput, currentLocalTime, apiKey) {
+  const url = "https://api.groq.com/openai/v1/chat/completions";
+  
+  const simplifiedPrompt = `
+You are the AI task extractor of DeadlineIQ.
+Analyze this user task description: "${userInput}"
+
+Reference Local Date/Time: ${currentLocalTime} (Current Year is 2026).
+
+Return a JSON object with these exact keys:
+- "title": Concise task name (string)
+- "deadline": ISO 8601 DateTime string (or null if none)
+- "estimatedHours": Total estimated hours (number)
+- "priority": "low" or "medium" or "high" (string)
+- "type": Category category (string)
+- "subtasks": Array of 3-5 subtask objects, each with "title" (string) and "durationHours" (number)
+- "registrationLink": Direct registration URL in text (string or null)
+- "prizes": Prize description if any (string or null)
+- "eligibility": Eligibility criteria if any (string or null)
+- "location": Physical location or "Online" (string or null)
+
+Format the response as a single valid JSON object. Do not include extra conversational text.
+`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: simplifiedPrompt }],
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API Error: HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  return JSON.parse(content);
+}
+
+/**
+ * Queries Groq Cloud API for conversational chatbot replies.
+ */
+async function chatWithGroqCloudLLM(message, history, currentTasks, profile, apiKey) {
+  const url = "https://api.groq.com/openai/v1/chat/completions";
+  
+  const activeTasks = currentTasks.map(t => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority,
+    status: t.status,
+    deadline: t.deadline
+  }));
+
+  const promptText = `
+You are the AI Productivity Agent of DeadlineIQ.
+Your role is to act as an empathetic coach, counselor, and coordinator. You help users schedule, manage task overload, and defeat procrastination.
+
+Current Active Tasks:
+${JSON.stringify(activeTasks)}
+
+User Behavioral Forensics:
+- Primary Procrastination Style: ${profile.primaryPattern}
+- Explanatory Fingerprint: "${profile.explanation}"
+
+Your capabilities:
+1. Talk to the user empathetically. Suggest actionable, tiny next steps.
+2. Coordinate and execute task operations. If the user asks you to add, snooze, or complete a task, say you will do it, and return the appropriate action metadata in the JSON response.
+
+Actions Supported:
+- ADD_TASK: to create a new task. Payload needs: { title: "Concise name", priority: "low|medium|high", estimatedHours: number }
+- DEFER_TASK: to snooze/reschedule a task. Payload needs: { taskId: "id of task", newDeadline: "ISO DateTime String" } (Use year 2026. Current year is 2026).
+- COMPLETE_TASK: to mark a task as completed. Payload needs: { taskId: "id of task" }
+- NONE: default when no task creation/update is requested.
+
+Return a JSON matching the schema.
+`;
+
+  const messages = [
+    { role: "system", content: promptText },
+    ...history.map(h => ({
+      role: h.role === "user" ? "user" : "assistant",
+      content: h.text
+    })),
+    { role: "user", content: message }
+  ];
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API Error: HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content;
+  return JSON.parse(content);
+}
+
 export async function parseTaskWithGemini(userInput, onProgress) {
   // 1. Get API Key (Settings storage or fallback to Env)
   const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
+  const groqApiKey = localStorage.getItem("deadlineiq_groq_api_key") || import.meta.env.VITE_GROQ_API_KEY;
   
   // Format current time context
   const now = new Date();
@@ -307,6 +426,63 @@ Return the JSON matching the required schema.
 `;
 
   if (!apiKey) {
+    if (groqApiKey) {
+      console.info("Gemini key missing but Groq key found. Routing task parse to Groq Cloud API...");
+      try {
+        if (onProgress) onProgress("Parsing task with Groq Cloud (Llama-3)...");
+        const rawParsed = await queryGroqCloudLLM(userInput, currentLocalTime, groqApiKey);
+        
+        // Structure the response details with fuzzy aliases
+        const title = rawParsed.title || rawParsed.task || rawParsed.task_name || rawParsed.name || "Captured Task";
+        const deadline = rawParsed.deadline || null;
+        const estimatedHours = parseFloat(rawParsed.estimatedHours || rawParsed.duration || 2.0) || 2.0;
+        const priority = rawParsed.priority || "medium";
+        const type = rawParsed.type || "General";
+        const subtasksRaw = rawParsed.subtasks || rawParsed.steps || rawParsed.checklist || [];
+        let subtasks = Array.isArray(subtasksRaw) ? subtasksRaw.map(s => {
+          if (typeof s === "string") {
+            return { title: s, durationHours: Math.max(0.5, Math.round((estimatedHours / Math.max(1, subtasksRaw.length)) * 10) / 10) };
+          }
+          return {
+            title: s.title || s.step || s.name || "Subtask step",
+            durationHours: parseFloat(s.durationHours || s.hours || s.duration) || 0.5
+          };
+        }) : [];
+        
+        if (subtasks.length === 0) {
+          subtasks = [
+            { title: `Prepare & organize: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.3 * 10) / 10) },
+            { title: `Execute core actions: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.5 * 10) / 10) },
+            { title: `Final review & polish: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.2 * 10) / 10) }
+          ];
+        }
+
+        return {
+          title,
+          deadline,
+          estimatedHours,
+          priority,
+          type,
+          isVague: !!rawParsed.isVague,
+          clarifyingQuestion: rawParsed.clarifyingQuestion || "",
+          confidence: 0.95,
+          subtasks,
+          registrationLink: rawParsed.registrationLink || null,
+          prizes: rawParsed.prizes || null,
+          eligibility: rawParsed.eligibility || null,
+          location: rawParsed.location || null
+        };
+      } catch (groqErr) {
+        console.warn("Groq cloud parser failed, falling back to local:", groqErr.message);
+      }
+    }
+
+    const offlinePreference = localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu";
+    if (offlinePreference === "heuristics") {
+      console.info("Using fast local deterministic parser per user preference.");
+      return parseTaskLocally(userInput, "User preference: Fast Heuristics");
+    }
+
     console.warn("Gemini API key is missing. Trying local offline LLM...");
     try {
       // 1. Try local WebLLM directly inside browser (WebGPU accelerated)
@@ -823,6 +999,7 @@ Provide a predicted success percentage (between 10% and 99%) and exactly 2 sente
 
 export async function chatWithProductivityAgent(message, history, currentTasks, profile) {
   const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
+  const groqApiKey = localStorage.getItem("deadlineiq_groq_api_key") || import.meta.env.VITE_GROQ_API_KEY;
 
   const activeTasks = currentTasks.map(t => ({
     id: t.id,
@@ -858,6 +1035,23 @@ User Message: "${message}"
 `;
 
   if (!apiKey) {
+    if (groqApiKey) {
+      console.info("Gemini key missing but Groq key found. Routing chat to Groq Cloud API...");
+      try {
+        return await chatWithGroqCloudLLM(message, history, currentTasks, profile, groqApiKey);
+      } catch (groqErr) {
+        console.warn("Groq cloud chat failed, falling back to local:", groqErr.message);
+      }
+    }
+
+    const offlinePreference = localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu";
+    if (offlinePreference === "heuristics") {
+      return {
+        reply: "[Offline Mode - Heuristics] I'm active! Configure a Gemini API Key in Settings to unlock AI coaching, or set your Offline Engine to WebGPU to use the local model.",
+        action: { type: "NONE", payload: {} }
+      };
+    }
+
     console.warn("Gemini API key is missing. Trying local offline LLM for chat...");
     try {
       return await chatWithLocalOfflineLLM(promptText);

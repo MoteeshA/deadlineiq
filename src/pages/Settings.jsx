@@ -27,7 +27,18 @@ export default function Settings() {
   const [resendEmail, setResendEmail] = useState(
     localStorage.getItem("deadlineiq_resend_recipient_email") || ""
   );
+  const [groqKeyInput, setGroqKeyInput] = useState(
+    localStorage.getItem("deadlineiq_groq_api_key") || ""
+  );
+  const [offlinePreference, setOfflinePreference] = useState(
+    localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu"
+  );
 
+  const handleSaveOfflinePreference = (val) => {
+    setOfflinePreference(val);
+    localStorage.setItem("deadlineiq_offline_mode_preference", val);
+    addToast(`Offline Mode set to ${val === "webgpu" ? "Local AI Model" : "Fast Deterministic Heuristics"}!`, { type: "success" });
+  };
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -140,6 +151,12 @@ export default function Settings() {
     addToast("Gemini API key saved successfully!", { type: "success" });
   };
 
+  const handleSaveGroqKey = (e) => {
+    e.preventDefault();
+    localStorage.setItem("deadlineiq_groq_api_key", groqKeyInput.trim());
+    addToast("Groq API key saved successfully! ⚡", { type: "success" });
+  };
+
   const handleSaveElevenLabs = (e) => {
     e.preventDefault();
     localStorage.setItem("deadlineiq_elevenlabs_api_key", elevenLabsKey.trim());
@@ -221,6 +238,84 @@ export default function Settings() {
               Save Key
             </button>
           </form>
+          
+          <p className="text-[11px] text-indigo-300 font-semibold mt-3.5 select-none leading-relaxed">
+            💡 <strong>Need a key?</strong> You can get a <strong>free</strong> API Key from Google AI Studio. The free tier supports up to <strong>1,500 requests/day</strong> and 15 RPM for free, which is more than enough for regular scheduling!
+            <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 underline ml-1 font-bold">
+              Get free key from Google AI Studio ↗
+            </a>
+          </p>
+        </div>
+
+        {/* Groq API Key Configuration */}
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 sm:p-8">
+          <h3 className="text-base font-bold text-slate-200 mb-2 flex items-center gap-2 select-none">
+            <svg className="w-4 h-4 text-emerald-450" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg> Groq API Key Setup (Fastest Option)
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-xl mb-5">
+            Add a Groq API Key to run your task parsing and chats through Groq's high-speed cloud endpoint (Meta Llama-3). It compiles and runs in under 100 milliseconds!
+          </p>
+
+          <form onSubmit={handleSaveGroqKey} className="flex flex-col sm:flex-row gap-3 max-w-lg">
+            <input
+              type="password"
+              placeholder="Enter Groq API Key (e.g. gsk_...)"
+              value={groqKeyInput}
+              onChange={(e) => setGroqKeyInput(e.target.value)}
+              className="flex-1 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition"
+            />
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs tracking-wide transition active:scale-[0.98]"
+            >
+              Save Key
+            </button>
+          </form>
+
+          <p className="text-[11px] text-emerald-450 font-semibold mt-3.5 select-none leading-relaxed">
+            💡 <strong>Completely Free & Unlimited:</strong> You can get a free key from your Groq Console dashboard.
+            <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline ml-1 font-bold">
+              Get free key from Groq Console ↗
+            </a>
+          </p>
+        </div>
+
+        {/* Offline Engine Settings */}
+        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 sm:p-8">
+          <h3 className="text-base font-bold text-slate-200 mb-2 flex items-center gap-2 select-none">
+            <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg> Offline Mode Preference
+          </h3>
+          <p className="text-xs text-slate-400 leading-relaxed max-w-xl mb-5">
+            Choose what parsing strategy to use when your cloud API keys are not active.
+          </p>
+          <div className="flex flex-wrap gap-4 max-w-lg">
+            <button
+              onClick={() => handleSaveOfflinePreference("webgpu")}
+              className={`flex-1 min-w-[200px] p-4 rounded-2xl border text-xs font-bold transition flex flex-col items-center text-center gap-1.5 cursor-pointer ${
+                offlinePreference === "webgpu"
+                  ? "bg-indigo-500/10 border-indigo-500/40 text-indigo-300"
+                  : "bg-slate-950/40 border-slate-850 text-slate-500 hover:text-slate-350 hover:border-slate-800"
+              }`}
+            >
+              <span className="text-sm">🧠 WebGPU Local AI</span>
+              <span className="text-[10px] font-normal opacity-85 leading-relaxed">Smart extraction running locally on your laptop (~350MB, slow first compilation).</span>
+            </button>
+            <button
+              onClick={() => handleSaveOfflinePreference("heuristics")}
+              className={`flex-1 min-w-[200px] p-4 rounded-2xl border text-xs font-bold transition flex flex-col items-center text-center gap-1.5 cursor-pointer ${
+                offlinePreference === "heuristics"
+                  ? "bg-indigo-500/10 border-indigo-500/40 text-indigo-300"
+                  : "bg-slate-950/40 border-slate-850 text-slate-500 hover:text-slate-350 hover:border-slate-800"
+              }`}
+            >
+              <span className="text-sm">⚡ Fast Heuristics</span>
+              <span className="text-[10px] font-normal opacity-85 leading-relaxed">Instant local regex parser. Loads in 0 milliseconds, zero performance lag, lightweight.</span>
+            </button>
+          </div>
         </div>
 
         {/* Automatic Google Email Notifications */}
