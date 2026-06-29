@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, db } from "../firebase";
-import { collection, addDoc, getDocs, query as fsQuery, where, orderBy as fsOrderBy, limit as fsLimit, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "../context/ToastContext";
 import { parseTaskWithGemini, parseMediaWithGemini } from "../services/gemini";
 import { checkAndTriggerEmail } from "../services/email";
@@ -184,29 +184,15 @@ export default function Extension() {
       throw new Error("No active user session found. Please log in.");
     }
 
-    // ── Duplicate Guard ────────────────────────────────────────────────────────
-    // If a task with the same title was saved in the last 5 minutes, skip saving
-    // and surface the existing one instead (prevents double-click / multi-tab duplicates)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recentQuery = fsQuery(
-      collection(db, "users", user.uid, "tasks"),
-      where("title", "==", taskData.title || "Untitled Captured Task"),
-      fsOrderBy("createdAt", "desc"),
-      fsLimit(1)
-    );
-    const recentSnap = await getDocs(recentQuery);
-    if (!recentSnap.empty) {
-      const existingDoc = recentSnap.docs[0];
-      const existingData = existingDoc.data();
-      const createdAt = existingData.createdAt?.toDate ? existingData.createdAt.toDate() : new Date(existingData.createdAt);
-      if (createdAt > fiveMinutesAgo) {
-        // Already saved recently — just surface it
-        const existing = { id: existingDoc.id, ...existingData };
-        setRecentTask(existing);
-        addToast(`"${existing.title}" already captured — showing existing task.`, { type: "info" });
-        return;
-      }
+    // ── Duplicate Guard (localStorage — no Firestore index needed) ─────────────
+    // If the same title was captured in the last 5 minutes, skip to prevent duplicates
+    const dedupeKey = `deadlineiq_capture_${(taskData.title || "").toLowerCase().replace(/\s+/g, "_").substring(0, 60)}`;
+    const lastCapturedAt = localStorage.getItem(dedupeKey);
+    if (lastCapturedAt && Date.now() - parseInt(lastCapturedAt, 10) < 5 * 60 * 1000) {
+      addToast(`"${taskData.title}" was already captured recently — no duplicate created.`, { type: "info" });
+      return;
     }
+    localStorage.setItem(dedupeKey, Date.now().toString());
     // ──────────────────────────────────────────────────────────────────────────
 
     const newTask = {
