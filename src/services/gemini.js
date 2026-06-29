@@ -917,7 +917,7 @@ function parseTaskLocally(userInput, errorMsg) {
   const hasNamedWeekday = dayNames.some(day => normalized.includes(day));
 
   if (explicitTime && !monthMatch && !inDaysMatch && !daysFromNowMatch && !nextWeekMatch && !endOfWeekMatch && !hasNamedWeekday) {
-    deadline = explicitTime.toISOString();
+    deadline = explicitTime;
   } else if (normalized.includes("today")) {
     const d = new Date(); d.setHours(17, 0, 0, 0);
     deadline = d.toISOString();
