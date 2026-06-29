@@ -108,30 +108,40 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
 
       {/* Hackathon/Opportunity Metadata Badges */}
       {(task.prizes || task.eligibility || task.location || task.registrationLink) && (
-        <div className="mb-4 flex flex-wrap gap-2 pt-1">
-          {task.prizes && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none">
-              🏆 {task.prizes}
-            </span>
+        <div className="mb-3 flex flex-col gap-2.5 pt-1">
+          {/* Info badges row */}
+          {(task.prizes || task.eligibility || task.location) && (
+            <div className="flex flex-wrap gap-1.5">
+              {task.prizes && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 select-none">
+                  🏆 {task.prizes}
+                </span>
+              )}
+              {task.eligibility && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none">
+                  👥 {task.eligibility}
+                </span>
+              )}
+              {task.location && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 select-none">
+                  📍 {task.location}
+                </span>
+              )}
+            </div>
           )}
-          {task.eligibility && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 select-none">
-              👥 {task.eligibility}
-            </span>
-          )}
-          {task.location && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 select-none">
-              📍 {task.location}
-            </span>
-          )}
+          {/* Prominent Register Button */}
           {task.registrationLink && (
-            <a 
+            <a
               href={task.registrationLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-indigo-500 text-white hover:bg-indigo-650 hover:scale-[1.03] active:scale-[0.98] transition cursor-pointer select-none border border-indigo-400/20"
+              className="group/reg flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl text-xs font-black uppercase tracking-widest text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-[0_0_16px_rgba(99,102,241,0.35)] hover:shadow-[0_0_24px_rgba(99,102,241,0.6)] border border-indigo-500/30 hover:border-indigo-400/60 transition-all duration-200 active:scale-[0.97] select-none"
+              onClick={(e) => e.stopPropagation()}
             >
-              🔗 Register Here
+              <svg className="w-3.5 h-3.5 shrink-0 group-hover/reg:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              Register Now
             </a>
           )}
         </div>
