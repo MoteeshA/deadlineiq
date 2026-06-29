@@ -26,6 +26,91 @@ export default function Extension() {
   const [dragActive, setDragActive] = useState(false);
   const [recentTask, setRecentTask] = useState(null);
   const [sourceUrl, setSourceUrl] = useState("");
+  const [pendingTask, setPendingTask] = useState(null);
+  const [pendingSource, setPendingSource] = useState("");
+  const [pendingOriginalUrl, setPendingOriginalUrl] = useState("");
+
+  const toDatetimeLocal = (val) => {
+    if (!val) return "";
+    const date = new Date(val);
+    if (isNaN(date.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  const updatePendingTask = (field, value) => {
+    setPendingTask(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, [field]: value };
+      
+      if (field === "taskKind") {
+        if (value === "event") {
+          updated.eventStart = prev.eventStart || prev.deadline || new Date().toISOString();
+          updated.deadline = null;
+        } else {
+          updated.deadline = prev.deadline || prev.eventStart || new Date().toISOString();
+          updated.eventStart = null;
+        }
+      }
+      return updated;
+    });
+  };
+
+  function initiateTaskReview(taskData, source, originalUrl = null) {
+    let parsedUrl = originalUrl || null;
+    if (!parsedUrl && source && source.startsWith("Web: ")) {
+      parsedUrl = source.replace("Web: ", "").trim();
+    } else if (!parsedUrl && source === "Bookmarklet Capture" && sourceUrl) {
+      parsedUrl = sourceUrl;
+    }
+
+    let finalRegLink = taskData.registrationLink || null;
+    if (!finalRegLink && parsedUrl) {
+      const decodedUrl = decodeURIComponent(parsedUrl);
+      const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad|devfolio|taikai|bemyapp|kaggle/i;
+      if (hackathonTypePattern.test(`${decodedUrl} ${taskData.title} ${taskData.type}`)) {
+        finalRegLink = decodedUrl;
+      }
+    }
+    
+    setPendingTask({
+      ...taskData,
+      registrationLink: finalRegLink,
+      sourceUrl: parsedUrl ? decodeURIComponent(parsedUrl) : null
+    });
+    setPendingSource(source);
+    setPendingOriginalUrl(parsedUrl);
+  }
+
+  const handleConfirmSave = async () => {
+    if (!pendingTask) return;
+    setIsProcessing(true);
+    setStatusText("Saving opportunity details to database...");
+    try {
+      await saveCapturedTask(pendingTask, pendingSource, pendingOriginalUrl);
+      setPendingTask(null);
+      
+      if (pendingSource === "Bookmarklet Capture" && window.opener) {
+        setStatusText("Task saved successfully! Closing popup...");
+        setTimeout(() => {
+          window.close();
+        }, 1500);
+      }
+    } catch (err) {
+      console.error(err);
+      addToast(`Failed to save task: ${err.message}`, { type: "error" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelSave = () => {
+    setPendingTask(null);
+    addToast("Task capture cancelled.", { type: "info" });
+    if (pendingSource === "Bookmarklet Capture" && window.opener) {
+      window.close();
+    }
+  };
   const dropRef = useRef(null);
   const dragLinkRef = useRef(null);
 
@@ -56,15 +141,7 @@ export default function Extension() {
           
           // Call AI parser
           const taskData = await parseTaskWithGemini(contentSource, setStatusText);
-          await saveCapturedTask(taskData, "Bookmarklet Capture", urlParam);
-          
-          setStatusText("Success! Opportunity logged in your board.");
-          setTimeout(() => {
-            // Close popup if opened as popup, else stay
-            if (window.opener) {
-              window.close();
-            }
-          }, 2000);
+          initiateTaskReview(taskData, "Bookmarklet Capture", urlParam);
         } catch (err) {
           console.error("Bookmarklet capture failed:", err);
           addToast(`Capture failed: ${err.message}`, { type: "error" });
@@ -152,7 +229,7 @@ export default function Extension() {
 
               setStatusText("Extracting tasks from OCR text with local model...");
               const parsedTask = await parseTaskWithGemini(`[Extracted from Screenshot/Image OCR]\n${extractedText}`, setStatusText);
-              await saveCapturedTask(parsedTask, `Offline Image OCR: ${file.name}`);
+              initiateTaskReview(parsedTask, `Offline Image OCR: ${file.name}`);
               return;
             } else {
               throw new Error("Offline file ingestion only supports images (PNG, JPG). PDFs require a Gemini API Key.");
@@ -160,7 +237,7 @@ export default function Extension() {
           }
 
           const parsedTask = await parseMediaWithGemini(base64Data, mimeType);
-          await saveCapturedTask(parsedTask, `File: ${file.name}`);
+          initiateTaskReview(parsedTask, `File: ${file.name}`);
         } catch (err) {
           console.error(err);
           addToast(err.message || "Failed to analyze document", { type: "error" });
@@ -286,7 +363,7 @@ export default function Extension() {
 
       setStatusText("Extracting opportunity details and scheduling constraints with Gemini...");
       const taskData = await parseTaskWithGemini(`Scraped Website URL: ${urlInput}\nPage Contents: ${pageText}`, setStatusText);
-      await saveCapturedTask(taskData, `Web: ${urlInput}`, urlInput);
+      initiateTaskReview(taskData, `Web: ${urlInput}`, urlInput);
       
       setUrlInput("");
     } catch (err) {
@@ -307,7 +384,7 @@ export default function Extension() {
 
     try {
       const taskData = await parseTaskWithGemini(textInput.trim(), setStatusText);
-      await saveCapturedTask(taskData, "Text Capture");
+      initiateTaskReview(taskData, "Text Capture");
       setTextInput("");
     } catch (err) {
       console.error(err);
@@ -577,6 +654,184 @@ export default function Extension() {
               </a>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pending Task Review/Confirm Modal */}
+      {pendingTask && (
+        <div className="fixed inset-0 z-50 bg-[#060413]/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#0f0b2d]/90 border border-indigo-500/30 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-5 shadow-2xl relative animate-zoom-in">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+            
+            {/* Modal Header */}
+            <div className="flex items-center gap-2 select-none border-b border-slate-800/60 pb-3">
+              <span className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 animate-pulse" />
+              </span>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-100 font-mono">
+                  Review & Confirm Opportunity
+                </h3>
+                <p className="text-[9px] font-bold text-slate-500 tracking-wider font-mono uppercase">
+                  Verify or adjust details before saving
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Body / Form */}
+            <div className="space-y-4 text-left max-h-[60vh] overflow-y-auto pr-1">
+              {/* Title */}
+              <div>
+                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Opportunity/Task Title</label>
+                <input 
+                  type="text"
+                  value={pendingTask.title || ""}
+                  onChange={e => updatePendingTask("title", e.target.value)}
+                  className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                />
+              </div>
+
+              {/* TaskKind / Type Selector */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Classification</label>
+                  <select
+                    value={pendingTask.taskKind || "task"}
+                    onChange={e => updatePendingTask("taskKind", e.target.value)}
+                    className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 transition"
+                  >
+                    <option value="task">Task / Opportunity (with Deadline)</option>
+                    <option value="event">Event / Meeting (with Start Time)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Category</label>
+                  <input 
+                    type="text"
+                    value={pendingTask.type || "General"}
+                    onChange={e => updatePendingTask("type", e.target.value)}
+                    className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Deadline or EventStart */}
+              <div>
+                <label className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">
+                  {pendingTask.taskKind === "event" ? "Event Start Time" : "Submission/Registration Deadline"}
+                </label>
+                <input 
+                  type="datetime-local"
+                  value={toDatetimeLocal(pendingTask.taskKind === "event" ? pendingTask.eventStart : pendingTask.deadline)}
+                  onChange={e => {
+                    const value = e.target.value;
+                    const dateVal = value ? new Date(value).toISOString() : null;
+                    if (pendingTask.taskKind === "event") {
+                      updatePendingTask("eventStart", dateVal);
+                    } else {
+                      updatePendingTask("deadline", dateVal);
+                    }
+                  }}
+                  className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-xs outline-none text-slate-100 transition"
+                />
+              </div>
+
+              {/* Effort & Priority */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Est. Hours</label>
+                  <input 
+                    type="number"
+                    step="0.5"
+                    value={pendingTask.estimatedHours || 2}
+                    onChange={e => updatePendingTask("estimatedHours", parseFloat(e.target.value) || 2)}
+                    className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 transition"
+                  />
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Priority</label>
+                  <select
+                    value={pendingTask.priority || "medium"}
+                    onChange={e => updatePendingTask("priority", e.target.value)}
+                    className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 transition"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Hackathon Fields (Show if matching hackathon/opportunity patterns) */}
+              {(pendingTask.registrationLink || pendingTask.sourceUrl || /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad/i.test(`${pendingTask.title} ${pendingTask.type}`)) && (
+                <div className="border-t border-slate-800/40 pt-4 space-y-4">
+                  <div className="text-[9px] font-black text-indigo-400 uppercase tracking-wider font-mono">Opportunity Metadata</div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Prizes</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. $10,000 Cash"
+                        value={pendingTask.prizes || ""}
+                        onChange={e => updatePendingTask("prizes", e.target.value || null)}
+                        className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Eligibility</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Students only"
+                        value={pendingTask.eligibility || ""}
+                        onChange={e => updatePendingTask("eligibility", e.target.value || null)}
+                        className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Location</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Online / Hybrid"
+                        value={pendingTask.location || ""}
+                        onChange={e => updatePendingTask("location", e.target.value || null)}
+                        className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Registration Link</label>
+                      <input 
+                        type="text"
+                        value={pendingTask.registrationLink || ""}
+                        onChange={e => updatePendingTask("registrationLink", e.target.value || null)}
+                        className="w-full mt-1.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-800/60 pt-4">
+              <button
+                onClick={handleCancelSave}
+                className="px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-slate-350 hover:text-white transition font-bold uppercase tracking-wider text-[10px] active:scale-[0.97] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSave}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-500 text-white transition font-bold uppercase tracking-wider text-[10px] active:scale-[0.97] cursor-pointer shadow-lg shadow-emerald-500/10 flex items-center gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Confirm & Create
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
