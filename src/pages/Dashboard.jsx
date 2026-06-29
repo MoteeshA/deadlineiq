@@ -140,13 +140,21 @@ export default function Dashboard() {
     }
   }, [tasks]);
 
-  // Auth check
+  // Auth check & loading timeout fail-safe
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (!u) setLoading(false);
     });
-    return () => unsub();
+    // Fail-safe to prevent infinite spinner if connection lags
+    const failSafe = setTimeout(() => {
+      setLoading(false);
+    }, 2800);
+
+    return () => {
+      unsub();
+      clearTimeout(failSafe);
+    };
   }, []);
 
   // Tasks real-time sync

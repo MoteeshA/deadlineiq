@@ -588,5 +588,97 @@ User Message: "${message}"
   }
 }
 
+/**
+ * Parses multimodal files (images, PDFs, screenshots) using Gemini 2.5 Flash.
+ */
+export async function parseMediaWithGemini(base64Data, mimeType) {
+  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API Key is missing. Please configure it in Settings to parse files.");
+  }
+
+  const now = new Date();
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dayName = days[now.getDay()];
+  const currentLocalTime = `${dayName}, ${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+  const promptText = `
+You are the multimodal intelligence engine of DeadlineIQ, an anti-procrastination task manager.
+Your job is to analyze the attached image, screenshot, or document (PDF) to perform Universal AI Capture.
+Run OCR and analysis to extract the core task/opportunity (e.g. hackathons, assignments, jobs, project deliverables).
+
+Current Time Context:
+- Current Local Date/Time: ${currentLocalTime}
+- Current Year is 2026.
+
+Extract and return a structured JSON task with these fields:
+1. Title: Clean, descriptive name of the opportunity/task (e.g. 'Build Prototype for DeadlineIQ' or 'Devpost Hackathon Submission').
+2. Deadline: ISO 8601 DateTime string (e.g. '2026-06-30T17:00:00Z'). Resolve relative descriptors. Set to null if none is found.
+3. EstimatedHours: Realistic estimation of hours needed (default to 2 if unspecified).
+4. Priority: low, medium, or high.
+5. Type: Category, e.g. "Programming", "Writing", "Learning", "Admin", "Event", etc.
+6. Subtasks: A list of 3-6 sequential action steps (each with 'title' and 'durationHours' matching estimatedHours).
+
+Return the JSON matching the required schema.
+`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: promptText },
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Data
+              }
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            title: { type: "STRING" },
+            deadline: { type: "STRING", description: "ISO 8601 datetime string. Use year 2026. Null if none." },
+            estimatedHours: { type: "NUMBER" },
+            priority: { type: "STRING", enum: ["low", "medium", "high"] },
+            type: { type: "STRING" },
+            subtasks: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  durationHours: { type: "NUMBER" }
+                },
+                required: ["title", "durationHours"]
+              }
+            }
+          },
+          required: ["title", "estimatedHours", "priority", "type", "subtasks"]
+        }
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gemini Media API call failed: ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  return JSON.parse(text);
+}
+
 
 

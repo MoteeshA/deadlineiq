@@ -1,40 +1,457 @@
-export default function Extension() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 select-none animate-zoom-in">
-      <div className="max-w-md w-full bg-slate-900/40 border border-slate-800/80 rounded-3xl p-8 sm:p-10 backdrop-blur-2xl shadow-2xl text-center relative overflow-hidden">
-        {/* Glow accents */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+import { useState, useEffect, useRef } from "react";
+import { auth, db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { useToast } from "../context/ToastContext";
+import { parseTaskWithGemini, parseMediaWithGemini } from "../services/gemini";
+import { checkAndTriggerEmail } from "../services/email";
+import { 
+  Inbox, 
+  Link as LinkIcon, 
+  UploadCloud, 
+  Image as ImageIcon, 
+  FileText, 
+  Bookmark, 
+  Loader2, 
+  CheckCircle2, 
+  Plus, 
+  Sparkles 
+} from "lucide-react";
 
-        {/* Puzzle Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/5">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-          </svg>
+export default function Extension() {
+  const { addToast } = useToast();
+  const [urlInput, setUrlInput] = useState("");
+  const [textInput, setTextInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [statusText, setStatusText] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [recentTask, setRecentTask] = useState(null);
+  const dropRef = useRef(null);
+
+  // Bookmarklet Code
+  const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.open('https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text,'_blank','width=600,height=700,status=no,toolbar=no,menubar=no,location=no');})();`;
+
+  // Detect and process Bookmarklet Intake parameters on load
+  useEffect(() => {
+    const handleBookmarkletIntake = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlParam = params.get("url");
+      const titleParam = params.get("title");
+      const textParam = params.get("text");
+
+      if (urlParam || titleParam || textParam) {
+        setIsProcessing(true);
+        setStatusText("Bookmarklet received. Initializing AI Parsing Layer...");
+        try {
+          const contentSource = `Source URL: ${urlParam || "unspecified"}\nPage Title: ${titleParam || "unspecified"}\nContent Summary: ${textParam || "unspecified"}`;
+          
+          // Call Gemini
+          const taskData = await parseTaskWithGemini(contentSource);
+          await saveCapturedTask(taskData, "Bookmarklet Capture");
+          
+          setStatusText("Success! Opportunity logged in your board.");
+          setTimeout(() => {
+            // Close the popup window automatically
+            window.close();
+          }, 2000);
+        } catch (err) {
+          console.error("Bookmarklet capture failed:", err);
+          addToast(`Capture failed: ${err.message}`, { type: "error" });
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    };
+
+    handleBookmarkletIntake();
+  }, []);
+
+  // Global Paste listener (Ctrl+V) for Screenshot Clipboard Images
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            addToast("Screenshot detected in clipboard! Processing...", { type: "info" });
+            await processFile(file);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, []);
+
+  // File Processor (OCR + Vision + NLP)
+  const processFile = async (file) => {
+    setIsProcessing(true);
+    setStatusText(`AI processing ${file.name} (OCR + Vision Layer)...`);
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64Data = reader.result.split(",")[1];
+          let mimeType = file.type;
+          
+          // PDF Mime fallback if standard reader misses it
+          if (file.name.endsWith(".pdf")) {
+            mimeType = "application/pdf";
+          }
+
+          const parsedTask = await parseMediaWithGemini(base64Data, mimeType);
+          await saveCapturedTask(parsedTask, `File: ${file.name}`);
+        } catch (err) {
+          console.error(err);
+          addToast(err.message || "Failed to analyze document", { type: "error" });
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      addToast("File reading error", { type: "error" });
+      setIsProcessing(false);
+    }
+  };
+
+  // Helper to commit parsed task to Firestore & dispatch alerts
+  const saveCapturedTask = async (taskData, source) => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No active user session found. Please log in.");
+    }
+
+    const newTask = {
+      title: taskData.title || "Untitled Captured Task",
+      deadline: taskData.deadline ? new Date(taskData.deadline) : null,
+      estimatedHours: taskData.estimatedHours || 2,
+      priority: taskData.priority || "medium",
+      type: taskData.type || "General",
+      subtasks: taskData.subtasks || [],
+      status: "today",
+      createdAt: serverTimestamp(),
+      deferralCount: 0,
+      deferralHistory: [],
+      captureSource: source
+    };
+
+    const docRef = await addDoc(collection(db, "users", user.uid, "tasks"), newTask);
+    
+    const taskWithId = {
+      id: docRef.id,
+      ...newTask,
+      deadline: newTask.deadline // keep as date
+    };
+
+    setRecentTask(taskWithId);
+    addToast(`Task "${taskWithId.title}" auto-created!`, { type: "success" });
+
+    // Proactively check procrastination risk & send email alert
+    try {
+      await checkAndTriggerEmail(taskWithId, "capture");
+    } catch (emailErr) {
+      console.error("Procrastination alert email trigger failed:", emailErr);
+    }
+  };
+
+  // Scrape and parse pasted URL (Devpost, Syllabus site, etc.)
+  const handleUrlSubmit = async (e) => {
+    e.preventDefault();
+    if (!urlInput.trim()) return;
+
+    setIsProcessing(true);
+    setStatusText("Fetching web page contents via CORS gateway...");
+
+    try {
+      // CORS proxy wrapper
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlInput.trim())}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("CORS Proxy Fetch Failed");
+
+      const json = await response.json();
+      const htmlContents = json.contents;
+
+      // Extract raw body text
+      const domParser = new DOMParser();
+      const doc = domParser.parseFromString(htmlContents, "text/html");
+      
+      // Clean script and style nodes for token efficiency
+      doc.querySelectorAll("script, style, svg, nav, footer").forEach(node => node.remove());
+      const pageText = doc.body.innerText.replace(/\s+/g, " ").substring(0, 3000);
+
+      setStatusText("Extracting opportunity details and scheduling constraints with Gemini...");
+      const taskData = await parseTaskWithGemini(`Scraped Website URL: ${urlInput}\nPage Contents: ${pageText}`);
+      await saveCapturedTask(taskData, `Web: ${urlInput}`);
+      
+      setUrlInput("");
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to fetch or parse web content. Try copy-pasting the text instead.", { type: "error" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Submit pasted text block
+  const handleTextSubmit = async (e) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+
+    setIsProcessing(true);
+    setStatusText("Analyzing text block for opportunities...");
+
+    try {
+      const taskData = await parseTaskWithGemini(textInput.trim());
+      await saveCapturedTask(taskData, "Text Capture");
+      setTextInput("");
+    } catch (err) {
+      console.error(err);
+      addToast("Failed to parse text", { type: "error" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Drag handlers
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      await processFile(file);
+    }
+  };
+
+  return (
+    <div className="flex-1 bg-transparent text-white p-6 md:p-8 animate-zoom-in relative z-10 max-w-5xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center gap-3 mb-2 select-none">
+        <span className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/5">
+          <Inbox className="h-5.5 w-5.5" />
+        </span>
+        <div>
+          <h2 className="text-xl font-black uppercase tracking-[0.16em] text-slate-100 font-mono">
+            AI Opportunity Capture Inbox
+          </h2>
+          <p className="text-[10px] font-bold text-slate-500 tracking-wider font-mono uppercase">
+            Universal ingestion gateway • Powered by Gemini Multimodal Vision
+          </p>
+        </div>
+      </div>
+
+      {/* Primary Ingestion Layer Grid */}
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Left 2 Cols: Capture Forms */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Drag & Drop zone */}
+          <div 
+            ref={dropRef}
+            onDragEnter={handleDrag}
+            onDragOver={handleDrag}
+            onDragLeave={handleDrag}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-3xl p-8 text-center transition relative overflow-hidden flex flex-col items-center justify-center min-h-[220px] select-none ${
+              dragActive 
+                ? "border-indigo-500 bg-indigo-500/5 shadow-[0_0_40px_rgba(99,102,241,0.1)]" 
+                : "border-slate-800 bg-[#0b0820]/40 hover:border-slate-700/80"
+            }`}
+          >
+            <UploadCloud className={`h-12 w-12 mb-4 transition-transform duration-300 ${dragActive ? "scale-110 text-indigo-400" : "text-slate-500"}`} />
+            <h4 className="text-sm font-bold text-slate-200">
+              Drag & Drop files here or Paste screenshot
+            </h4>
+            <p className="text-[10px] text-slate-500 font-semibold mt-2 uppercase tracking-wide">
+              Supports Images (.png, .jpg) & Documents (.pdf) • Ctrl+V works anywhere
+            </p>
+
+            <input 
+              type="file" 
+              id="file-upload" 
+              className="hidden" 
+              accept="image/*,application/pdf"
+              onChange={async (e) => {
+                if (e.target.files && e.target.files[0]) {
+                  await processFile(e.target.files[0]);
+                }
+              }}
+            />
+            <label 
+              htmlFor="file-upload"
+              className="mt-5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl transition cursor-pointer"
+            >
+              Browse Files
+            </label>
+          </div>
+
+          {/* Web Scraping & Text block Capture cards */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            {/* Scraping Card */}
+            <div className="bg-[#0b0820]/40 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-indigo-400 mb-3">
+                  <LinkIcon className="h-4.5 w-4.5" />
+                  <span className="text-[10px] font-black uppercase tracking-wider font-mono">Web Scraping</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
+                  Paste any event, assignment portal, or job link (e.g. Devpost). Gemini will fetch the page and build your task.
+                </p>
+              </div>
+              <form onSubmit={handleUrlSubmit} className="flex gap-2">
+                <input 
+                  type="url"
+                  placeholder="https://example.com/syllabus..."
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                  disabled={isProcessing}
+                />
+                <button 
+                  type="submit"
+                  className="px-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl transition cursor-pointer flex items-center justify-center shrink-0"
+                  disabled={isProcessing}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
+
+            {/* Raw Text Card */}
+            <div className="bg-[#0b0820]/40 border border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-indigo-400 mb-3">
+                  <FileText className="h-4.5 w-4.5" />
+                  <span className="text-[10px] font-black uppercase tracking-wider font-mono">Raw Text Block</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed mb-4">
+                  Dump syllabus text, email snippets, or random notes. Gemini will extract structure instantly.
+                </p>
+              </div>
+              <form onSubmit={handleTextSubmit} className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="e.g. History midterm is Friday Oct 2..."
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none text-slate-100 placeholder-slate-600 transition"
+                  disabled={isProcessing}
+                />
+                <button 
+                  type="submit"
+                  className="px-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl transition cursor-pointer flex items-center justify-center shrink-0"
+                  disabled={isProcessing}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
-        {/* Title & Description */}
-        <h2 className="text-xl sm:text-2xl font-black text-slate-100 tracking-wide mb-3">
-          Browser Extension Companion
-        </h2>
-        <p className="text-xs text-slate-400 leading-relaxed mb-8 max-w-sm mx-auto">
-          Synchronize your browsing workflow. Capture active tabs, right-click selected web text to save tasks, and trigger focus blocks directly from Chrome.
-        </p>
+        {/* Right Column: Draggable Bookmarklet */}
+        <div className="space-y-6">
+          <div className="bg-[#0b0820]/40 border border-slate-800/80 rounded-3xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden h-full min-h-[300px]">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
 
-        {/* Direct Download Button */}
-        <a
-          href="/deadlineiq-extension.zip"
-          download="deadlineiq-extension.zip"
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 hover:scale-[1.02] active:scale-[0.98] text-white font-bold text-xs tracking-widest uppercase transition shadow-lg shadow-indigo-500/15 cursor-pointer block text-center"
-        >
-          Add Extension
-        </a>
+            <div>
+              <div className="flex items-center gap-2 text-indigo-400 mb-3">
+                <Bookmark className="h-4.5 w-4.5" />
+                <span className="text-[10px] font-black uppercase tracking-wider font-mono">Bookmarklet</span>
+              </div>
+              <h3 className="text-sm font-bold text-slate-200 mb-2">
+                One-Click Bookmarklet Capture
+              </h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-6">
+                Drag the button below into your bookmarks bar. While browsing any website (like Devpost or LinkedIn), click it to send the page title, URL, and selection to DeadlineIQ automatically!
+              </p>
+            </div>
 
-        {/* Minor Helper Alert Note */}
-        <p className="text-[10px] text-slate-500 font-semibold mt-6 uppercase tracking-wider">
-          Manifest V3 • Compressed ZIP Archive
-        </p>
+            <div className="space-y-4">
+              {/* Draggable Button */}
+              <a 
+                href={bookmarkletCode}
+                onClick={(e) => e.preventDefault()}
+                className="w-full py-4 text-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 hover:scale-[1.02] active:scale-[0.98] transition text-white font-bold text-xs tracking-wider uppercase shadow-xl shadow-indigo-500/15 cursor-grab block border border-indigo-400/20"
+                title="Drag me to your Bookmarks Bar!"
+              >
+                📥 Save to DeadlineIQ
+              </a>
+              <div className="text-[9px] text-center text-slate-500 font-bold uppercase tracking-wider">
+                ▲ DRAG THIS BUTTON TO YOUR BOOKMARKS BAR
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Global Status/Processing Overlay Card */}
+      {isProcessing && (
+        <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-2xl p-5 flex items-center gap-4 animate-pulse">
+          <Loader2 className="h-5 w-5 text-indigo-400 animate-spin" />
+          <div>
+            <div className="text-xs font-bold text-indigo-300">Universal AI Processing Layer active...</div>
+            <p className="text-[10px] text-slate-400 mt-1 font-mono">{statusText}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Recently Created Task Display */}
+      {recentTask && (
+        <div className="bg-emerald-950/15 border border-emerald-500/20 rounded-3xl p-6 space-y-4">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <CheckCircle2 className="h-5 w-5" />
+            <h4 className="text-xs font-black uppercase tracking-wider font-mono">Structured task created successfully</h4>
+          </div>
+          
+          <div className="grid gap-4 sm:grid-cols-3 bg-black/20 p-4 rounded-2xl border border-white/5">
+            <div className="sm:col-span-2">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Title</div>
+              <div className="text-sm font-bold text-slate-200 mt-1">{recentTask.title}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Deadline</div>
+              <div className="text-xs font-semibold text-slate-350 mt-1">
+                {recentTask.deadline ? recentTask.deadline.toLocaleString() : "No deadline found"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Effort / Priority</div>
+              <div className="text-xs font-semibold text-indigo-300 mt-1 capitalize">
+                {recentTask.estimatedHours} hours • {recentTask.priority} priority
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Category</div>
+              <div className="text-xs font-semibold text-purple-300 mt-1">{recentTask.type}</div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider font-mono">Subtasks created</div>
+              <div className="text-xs font-semibold text-slate-300 mt-1">
+                {recentTask.subtasks?.length || 0} subtasks
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
