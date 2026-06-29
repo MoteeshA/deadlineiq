@@ -52,6 +52,10 @@ export async function sendEmailNotification(subject, htmlBody) {
     });
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        console.warn(`Gmail API skipped alert due to authentication status: HTTP ${response.status}`);
+        return false;
+      }
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData?.error?.message || `HTTP ${response.status} Error`);
     }
