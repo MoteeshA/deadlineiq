@@ -207,7 +207,7 @@ export default function Extension() {
     let finalRegLink = taskData.registrationLink || null;
     if (!finalRegLink && parsedUrl) {
       const decodedUrl = decodeURIComponent(parsedUrl);
-      const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad/i;
+      const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad|devfolio|taikai|bemyapp|kaggle/i;
       if (hackathonTypePattern.test(`${decodedUrl} ${taskData.title} ${taskData.type}`)) {
         finalRegLink = decodedUrl;
       }

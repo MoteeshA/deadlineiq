@@ -37,8 +37,9 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
     if (task.registrationLink) return task.registrationLink;
     
     // Check if it looks like a hackathon/opportunity
-    const isOpportunity = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad/i.test(
-      `${task.title} ${task.type || ""}`
+    const urlToCheck = task.registrationLink || task.sourceUrl || (task.captureSource && task.captureSource.startsWith("Web: ") ? task.captureSource.replace("Web: ", "") : "");
+    const isOpportunity = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad|devfolio|taikai|bemyapp|kaggle/i.test(
+      `${task.title} ${task.type || ""} ${urlToCheck}`
     );
     if (!isOpportunity) return null;
 
