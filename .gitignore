@@ -29,3 +29,6 @@ public/IQ_FINAL.mp4
 # Environment Variables
 .env
 .env.local
+*.jpg
+*.png
+screenshots/
