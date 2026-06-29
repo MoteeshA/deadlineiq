@@ -12,7 +12,16 @@ export default function ProtectedRoute({ children, requireAuth = true }) {
       setUser(currentUser);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    // Fallback: If auth state takes too long to resolve, release the spinner
+    const failSafe = setTimeout(() => {
+      setLoading(false);
+    }, 2800);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(failSafe);
+    };
   }, []);
 
   if (loading) {
