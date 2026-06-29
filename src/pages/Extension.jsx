@@ -100,7 +100,7 @@ export default function Extension() {
   }, []);
 
   // Dynamic loader for local browser OCR library (Tesseract.js)
-  const loadTesseract = async () => {
+  async function loadTesseract() {
     if (window.Tesseract) return window.Tesseract;
     return new Promise((resolve, reject) => {
       setStatusText("Connecting to local OCR CDN (Tesseract.js)...");
@@ -110,10 +110,10 @@ export default function Extension() {
       script.onerror = () => reject(new Error("Failed to load local OCR library from CDN"));
       document.head.appendChild(script);
     });
-  };
+  }
 
   // File Processor (OCR + Vision + NLP)
-  const processFile = async (file) => {
+  async function processFile(file) {
     setIsProcessing(true);
     setStatusText(`AI processing ${file.name} (OCR + Vision Layer)...`);
     
@@ -175,10 +175,10 @@ export default function Extension() {
       addToast("File reading error", { type: "error" });
       setIsProcessing(false);
     }
-  };
+  }
 
   // Helper to commit parsed task to Firestore & dispatch alerts
-  const saveCapturedTask = async (taskData, source) => {
+  async function saveCapturedTask(taskData, source) {
     const user = auth.currentUser;
     if (!user) {
       throw new Error("No active user session found. Please log in.");
@@ -219,7 +219,7 @@ export default function Extension() {
     } catch (emailErr) {
       console.error("Procrastination alert email trigger failed:", emailErr);
     }
-  };
+  }
 
   // Scrape and parse pasted URL (Devpost, Syllabus site, etc.)
   const handleUrlSubmit = async (e) => {

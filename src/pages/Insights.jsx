@@ -148,7 +148,7 @@ export default function Insights() {
       const today = new Date().toISOString().split("T")[0]; // "2026-06-29"
       const historyKey = `deadlineiq_score_history_${user.uid}`;
       let history = [];
-      try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch {}
+      try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch (e) { console.warn(e); }
       // Only save once per day
       if (!history.find(h => h.date === today)) {
         history.push({ date: today, score: calculatedScore });
@@ -164,7 +164,7 @@ export default function Insights() {
     if (!user) return Array(7).fill(calculatedScore);
     const historyKey = `deadlineiq_score_history_${user.uid}`;
     let history = [];
-    try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch {}
+    try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch (e) { console.warn(e); }
     if (history.length === 0) return Array(7).fill(calculatedScore);
     // Pad left with first known value if fewer than 7 days
     while (history.length < 7) history.unshift({ date: "", score: history[0].score });

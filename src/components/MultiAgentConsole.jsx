@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Terminal, Cpu, Play, CheckCircle2, X } from "lucide-react";
+import { Cpu, Play, CheckCircle2, X } from "lucide-react";
 
 export default function MultiAgentConsole({ isOpen, onClose }) {
   const [logs, setLogs] = useState([]);
@@ -38,7 +38,7 @@ export default function MultiAgentConsole({ isOpen, onClose }) {
     }
   }, [logs]);
 
-  const handleRunOptimization = () => {
+  function handleRunOptimization() {
     setLogs([]);
     setStatus("running");
     setProgress(0);
@@ -70,7 +70,7 @@ export default function MultiAgentConsole({ isOpen, onClose }) {
       clearInterval(progressInterval);
       timeouts.forEach(clearTimeout);
     };
-  };
+  }
 
   if (!isOpen) return null;
 

@@ -2,7 +2,7 @@
 // Immersive spatial dashboard & luxury logo reveal presentation container for DeadlineIQ
 
 import { useState, useEffect, useRef } from "react";
-import { auth, signInWithGoogle, db } from "../firebase";
+import { signInWithGoogle, db } from "../firebase";
 import { GoogleAuthProvider } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";

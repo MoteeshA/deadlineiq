@@ -22,7 +22,9 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
         // Restore Date objects
         return parsed.map(m => ({ ...m, time: new Date(m.time) }));
       }
-    } catch {}
+    } catch (e) {
+      console.warn("Failed to load chat history:", e);
+    }
     return [WELCOME_MSG];
   });
 
@@ -43,7 +45,9 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
         `deadlineiq_chat_history_${user.uid}`,
         JSON.stringify(messages.slice(-50)) // keep last 50 messages
       );
-    } catch {}
+    } catch (e) {
+      console.warn("Failed to save chat history:", e);
+    }
   }, [messages, user]);
 
   const startListening = () => {

@@ -208,14 +208,13 @@ function extractTaskFeatures(task) {
 
   // 5. FIX: Task type risk score — creative/writing tasks have higher procrastination risk
   // Load user's trigger categories from forensic cache to personalize this
-  let typeRisk = 0.4; // neutral default
   const type = (task.type || "General").toLowerCase();
   // Base type risk map
   const typeRiskMap = {
     writing: 0.75, presentations: 0.8, programming: 0.6,
     learning: 0.5, admin: 0.3, research: 0.35, general: 0.4, event: 0.45
   };
-  typeRisk = typeRiskMap[type] ?? 0.4;
+  let typeRisk = typeRiskMap[type] ?? 0.4;
   // Personalize: boost risk if this type is a known trigger category for this user
   try {
     const cachedPatternRaw = localStorage.getItem(
@@ -228,7 +227,9 @@ function extractTaskFeatures(task) {
         typeRisk = Math.min(1.0, typeRisk + 0.2); // boost if known trigger
       }
     }
-  } catch {}
+  } catch (e) {
+    console.warn(e);
+  }
 
   return [priorityVal, estHoursNorm, deferralsNorm, timeNorm, typeRisk];
 }
