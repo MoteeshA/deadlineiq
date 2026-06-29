@@ -27,6 +27,14 @@ export default function Extension() {
   const [recentTask, setRecentTask] = useState(null);
   const [sourceUrl, setSourceUrl] = useState("");
   const dropRef = useRef(null);
+  const dragLinkRef = useRef(null);
+
+  // Set javascript href dynamically to bypass React XSS sanitization
+  useEffect(() => {
+    if (dragLinkRef.current) {
+      dragLinkRef.current.setAttribute("href", bookmarkletCode);
+    }
+  }, [bookmarkletCode]);
 
   // Bookmarklet Code using redirection to guarantee bypass of popup blockers
   const bookmarkletCode = `javascript:(function(){const title=encodeURIComponent(document.title);const url=encodeURIComponent(window.location.href);const text=encodeURIComponent(window.getSelection().toString()||document.body.innerText.substring(0,2500));window.location.href='https://deadlineiq-6321f.web.app/extension?url='+url+'&title='+title+'&text='+text;})();`;
@@ -392,7 +400,8 @@ export default function Extension() {
             <div className="space-y-4">
               {/* Draggable Button */}
               <a 
-                href={bookmarkletCode}
+                ref={dragLinkRef}
+                href="#"
                 className="w-full py-4 text-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 hover:scale-[1.02] active:scale-[0.98] transition text-white font-bold text-xs tracking-wider uppercase shadow-xl shadow-indigo-500/15 cursor-grab block border border-indigo-400/20"
                 title="Drag me to your Bookmarks Bar!"
               >
