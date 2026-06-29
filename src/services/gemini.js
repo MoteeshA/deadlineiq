@@ -96,23 +96,48 @@ Format the response as a single valid JSON object. Do not include extra conversa
   if (jsonStart !== -1 && jsonEnd !== -1) {
     try {
       const rawParsed = JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+      
+      // Fuzzy key aliases to handle Qwen-2-0.5B variance
+      const title = rawParsed.title || rawParsed.task || rawParsed.task_name || rawParsed.name || rawParsed.opportunity || "Captured Task";
+      const deadline = rawParsed.deadline || rawParsed.due || rawParsed.date || rawParsed.time || null;
+      const estimatedHours = parseFloat(rawParsed.estimatedHours || rawParsed.duration || rawParsed.hours || rawParsed.effort) || 2;
+      const priority = rawParsed.priority || rawParsed.importance || "medium";
+      const type = rawParsed.type || rawParsed.category || "General";
+      
+      const subtasksRaw = rawParsed.subtasks || rawParsed.steps || rawParsed.checklist || [];
+      let subtasks = Array.isArray(subtasksRaw) ? subtasksRaw.map(s => {
+        if (typeof s === "string") {
+          return { title: s, durationHours: Math.max(0.5, Math.round((estimatedHours / Math.max(1, subtasksRaw.length)) * 10) / 10) };
+        }
+        return {
+          title: s.title || s.step || s.name || "Subtask step",
+          durationHours: parseFloat(s.durationHours || s.hours || s.duration) || 0.5
+        };
+      }) : [];
+
+      // If the tiny local model returned 0 subtasks, auto-generate a gorgeous 3-step plan
+      if (subtasks.length === 0) {
+        subtasks = [
+          { title: `Prepare & organize: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.3 * 10) / 10) },
+          { title: `Execute core actions: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.5 * 10) / 10) },
+          { title: `Final review & polish: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.2 * 10) / 10) }
+        ];
+      }
+
       return {
-        title: rawParsed.title || "Captured Task",
-        deadline: rawParsed.deadline || null,
-        estimatedHours: parseFloat(rawParsed.estimatedHours) || 2,
-        priority: rawParsed.priority || "medium",
-        type: rawParsed.type || "General",
+        title,
+        deadline,
+        estimatedHours,
+        priority,
+        type,
         isVague: false,
         clarifyingQuestion: "",
         confidence: 0.85,
-        subtasks: Array.isArray(rawParsed.subtasks) ? rawParsed.subtasks.map(s => ({
-          title: s.title || "Subtask step",
-          durationHours: parseFloat(s.durationHours) || 0.5
-        })) : [],
-        registrationLink: rawParsed.registrationLink || null,
-        prizes: rawParsed.prizes || null,
-        eligibility: rawParsed.eligibility || null,
-        location: rawParsed.location || null
+        subtasks,
+        registrationLink: rawParsed.registrationLink || rawParsed.url || rawParsed.link || null,
+        prizes: rawParsed.prizes || rawParsed.prize || rawParsed.rewards || null,
+        eligibility: rawParsed.eligibility || rawParsed.eligible || null,
+        location: rawParsed.location || rawParsed.place || null
       };
     } catch (parseErr) {
       console.warn("Local JSON parse failed, falling back to deterministic: ", parseErr);
