@@ -141,6 +141,8 @@ export default function AISpeaker({ user, tasks }) {
       audioFile = "/audio/welcome_morning.mp3";
     } else if (hour >= 12 && hour < 17) {
       audioFile = "/audio/welcome_afternoon.mp3";
+    } else if (hour >= 21 || hour < 5) {
+      audioFile = "/audio/welcome_night.mp3";
     }
 
     // Attempt automatic play silently (no robotic fallback to prevent bad experience)
@@ -157,8 +159,9 @@ export default function AISpeaker({ user, tasks }) {
           setActiveAudio(null);
         };
         audio.onerror = () => {
-          setOrbState("idle");
-          setActiveAudio(null);
+          const name = user?.displayName || user?.email?.split("@")[0] || "there";
+          const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 17 ? "Good afternoon" : hour >= 17 && hour < 21 ? "Good evening" : "Good night";
+          speakText(`${greeting}, ${name}. Welcome back to your workspace.`);
         };
 
         setActiveAudio(audio);
@@ -188,6 +191,8 @@ export default function AISpeaker({ user, tasks }) {
         audioFile = "/audio/welcome_morning.mp3";
       } else if (hour >= 12 && hour < 17) {
         audioFile = "/audio/welcome_afternoon.mp3";
+      } else if (hour >= 21 || hour < 5) {
+        audioFile = "/audio/welcome_night.mp3";
       }
 
       try {
@@ -200,15 +205,19 @@ export default function AISpeaker({ user, tasks }) {
           setActiveAudio(null);
         };
         audio.onerror = () => {
-          setOrbState("idle");
-          setActiveAudio(null);
+          const name = user?.displayName || user?.email?.split("@")[0] || "there";
+          const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 17 ? "Good afternoon" : hour >= 17 && hour < 21 ? "Good evening" : "Good night";
+          speakText(`${greeting}, ${name}. Welcome back to your workspace.`);
         };
         setActiveAudio(audio);
-        audio.play().catch(() => {
-          setOrbState("idle");
-          setActiveAudio(null);
+        audio.play().catch((err) => {
+          console.warn("Manual play request fail:", err);
+          const name = user?.displayName || user?.email?.split("@")[0] || "there";
+          const greeting = hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 17 ? "Good afternoon" : hour >= 17 && hour < 21 ? "Good evening" : "Good night";
+          speakText(`${greeting}, ${name}. Welcome back to your workspace.`);
         });
-      } catch {
+      } catch (err) {
+        console.warn("Manual play request catch:", err);
         setOrbState("idle");
         setActiveAudio(null);
       }
@@ -216,7 +225,7 @@ export default function AISpeaker({ user, tasks }) {
 
     window.addEventListener("play-welcome-audio", handlePlayRequest);
     return () => window.removeEventListener("play-welcome-audio", handlePlayRequest);
-  }, [activeAudio, muted]);
+  }, [activeAudio, muted, user]);
 
   const handleToggleMute = () => {
     const val = !muted;
