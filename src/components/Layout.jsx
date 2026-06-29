@@ -7,6 +7,7 @@ import AIAgentSidebar from "./AIAgentSidebar";
 import AISpeaker from "./AISpeaker";
 import { useToast } from "../context/ToastContext";
 import { checkAndTriggerEmail } from "../services/email";
+import { isWebLlmPreloaded, preloadWebLlm } from "../services/gemini";
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -14,6 +15,30 @@ export default function Layout({ children }) {
   const [user, setUser] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mouseCoords, setMouseCoords] = useState({ x: 0, y: 0 });
+
+  const [llmStatus, setLlmStatus] = useState(isWebLlmPreloaded() ? "Ready" : "Idle");
+  const [apiKeyExists, setApiKeyExists] = useState(
+    !!(localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY)
+  );
+
+  const handlePreload = async () => {
+    if (!navigator.gpu) {
+      addToast("WebGPU is not supported by your browser. Please use Chrome.", { type: "warning" });
+      setLlmStatus("Unsupported");
+      return;
+    }
+    setLlmStatus("Loading...");
+    try {
+      await preloadWebLlm((progressText) => {
+        setLlmStatus(progressText);
+      });
+      addToast("Local AI Model cached and ready to use offline! 🚀", { type: "success" });
+    } catch (err) {
+      console.error(err);
+      addToast(`Local AI preload failed: ${err.message}`, { type: "error" });
+      setLlmStatus("Failed");
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -440,14 +465,47 @@ export default function Layout({ children }) {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 pb-24 md:pb-0 overflow-y-auto z-20 relative bg-[radial-gradient(circle_at_70%_20%,rgba(124,58,237,0.14),transparent_28%)]">
         <div className="p-4 sm:p-6 md:p-6 max-w-[1500px] w-full mx-auto flex-1 flex flex-col">
-          {location.pathname === "/dashboard" && (
-            <div className="mb-5 rounded-[28px] border border-violet-300/18 bg-[#0b0820]/95 px-6 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300/80 font-mono">
-                DeadlineIQ Workspace
+           {location.pathname === "/dashboard" && (
+            <div className="mb-5 rounded-[28px] border border-violet-300/18 bg-[#0b0820]/95 px-6 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-md flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300/80 font-mono">
+                  DeadlineIQ Workspace
+                </div>
+                <h1 className="mt-2 text-3xl font-black tracking-normal text-white">
+                  Dashboard
+                </h1>
               </div>
-              <h1 className="mt-2 text-3xl font-black tracking-normal text-white">
-                Dashboard
-              </h1>
+
+              {/* Dynamic Local/Cloud AI Engine Status Indicator */}
+              <div className="shrink-0">
+                {apiKeyExists ? (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider select-none font-mono">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.6)]" />
+                    Cloud AI Engine Active
+                  </div>
+                ) : llmStatus === "Ready" ? (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-wider select-none font-mono">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 shadow-[0_0_10px_rgba(129,140,248,0.6)]" />
+                    Local AI Preloaded
+                  </div>
+                ) : llmStatus.startsWith("Loading:") || llmStatus === "Loading..." ? (
+                  <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-350 text-xs font-bold select-none font-mono animate-pulse">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-450 animate-ping" />
+                    {llmStatus}
+                  </div>
+                ) : llmStatus === "Unsupported" ? (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-bold uppercase tracking-wider select-none font-mono">
+                    WebGPU Not Supported
+                  </div>
+                ) : (
+                  <button
+                    onClick={handlePreload}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-650 hover:scale-[1.02] active:scale-[0.98] transition border border-violet-400/25 text-white font-bold text-xs uppercase tracking-wider cursor-pointer shadow-lg shadow-violet-500/10 font-mono"
+                  >
+                    📥 Preload Local AI
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {children}

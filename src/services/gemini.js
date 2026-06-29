@@ -1,3 +1,80 @@
+let webLlmEngine = null;
+
+/**
+ * Checks if the WebLLM engine has been successfully preloaded.
+ */
+export function isWebLlmPreloaded() {
+  return webLlmEngine !== null;
+}
+
+/**
+ * Manually triggers downloading and caching of the in-browser model.
+ */
+export async function preloadWebLlm(onProgress) {
+  if (webLlmEngine) {
+    if (onProgress) onProgress("Ready");
+    return;
+  }
+
+  if (!navigator.gpu) {
+    throw new Error("WebGPU is not supported by your browser.");
+  }
+
+  const webLLM = await import("https://esm.sh/@mlc-ai/web-llm");
+  
+  webLlmEngine = await webLLM.CreateMLCEngine("Qwen2-0.5B-Instruct-q4f16_1-MLC", {
+    initProgressCallback: (report) => {
+      if (onProgress) {
+        const progress = report.text.replace(/\[\d+\/\d+\]\s*/g, "");
+        onProgress(`Loading: ${progress}`);
+      }
+    }
+  });
+
+  if (onProgress) onProgress("Ready");
+}
+
+/**
+ * Loads and queries WebLLM model directly inside the browser using WebGPU (100% self-contained).
+ */
+async function queryInBrowserLLM(promptText, onProgress) {
+  if (!navigator.gpu) {
+    throw new Error("WebGPU is not supported by your browser. Please use Chrome or Safari 17.4+.");
+  }
+
+  const webLLM = await import("https://esm.sh/@mlc-ai/web-llm");
+  
+  if (!webLlmEngine) {
+    if (onProgress) onProgress("Initializing local in-browser LLM (Qwen2-0.5B: ~350MB)...");
+    webLlmEngine = await webLLM.CreateMLCEngine("Qwen2-0.5B-Instruct-q4f16_1-MLC", {
+      initProgressCallback: (report) => {
+        if (onProgress) {
+          // Clean up progress text
+          const progress = report.text.replace(/\[\d+\/\d+\]\s*/g, "");
+          onProgress(`Loading local AI: ${progress}`);
+        }
+      }
+    });
+  }
+
+  if (onProgress) onProgress("Local AI is thinking (using WebGPU)...");
+  
+  const response = await webLlmEngine.chat.completions.create({
+    messages: [
+      { role: "system", content: "You extract tasks and return structured JSON matching the requested schema." },
+      { role: "user", content: promptText }
+    ]
+  });
+
+  const content = response.choices[0].message.content;
+  const jsonStart = content.indexOf("{");
+  const jsonEnd = content.lastIndexOf("}");
+  if (jsonStart !== -1 && jsonEnd !== -1) {
+    return JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+  }
+  throw new Error("In-browser model output did not contain structured JSON");
+}
+
 /**
  * Queries local offline LLM (Ollama or Chrome Built-in Gemini Nano) for task parsing.
  */
@@ -46,6 +123,23 @@ async function queryLocalOfflineLLM(promptText) {
  * Queries local offline LLM for conversational chatbot replies.
  */
 async function chatWithLocalOfflineLLM(promptText) {
+  // Try local WebLLM first!
+  try {
+    if (navigator.gpu && webLlmEngine) {
+      const response = await webLlmEngine.chat.completions.create({
+        messages: [{ role: "user", content: promptText }]
+      });
+      const content = response.choices[0].message.content;
+      const jsonStart = content.indexOf("{");
+      const jsonEnd = content.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        return JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+      }
+    }
+  } catch (webLlmErr) {
+    console.warn("In-browser WebLLM failed for chat:", webLlmErr.message);
+  }
+
   // 1. Try Ollama local completions
   try {
     const response = await fetch("http://localhost:11434/v1/chat/completions", {
@@ -86,7 +180,7 @@ async function chatWithLocalOfflineLLM(promptText) {
   throw new Error("No local offline LLM available for chat");
 }
 
-export async function parseTaskWithGemini(userInput) {
+export async function parseTaskWithGemini(userInput, onProgress) {
   // 1. Get API Key (Settings storage or fallback to Env)
   const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
   
@@ -127,10 +221,20 @@ Return the JSON matching the required schema.
   if (!apiKey) {
     console.warn("Gemini API key is missing. Trying local offline LLM...");
     try {
+      // 1. Try local WebLLM directly inside browser (WebGPU accelerated)
+      if (navigator.gpu) {
+        return await queryInBrowserLLM(promptText, onProgress);
+      }
+    } catch (webLlmErr) {
+      console.warn("In-browser WebLLM failed, trying fallback LLMs:", webLlmErr.message);
+    }
+
+    try {
+      // 2. Try local Ollama endpoint next
       return await queryLocalOfflineLLM(promptText);
     } catch (err) {
       console.warn("No local offline LLM active. Using local deterministic parser fallback.");
-      return parseTaskLocally(userInput, "API Key missing in Settings; Local LLM failed");
+      return parseTaskLocally(userInput, "API Key missing in Settings; Local LLMs failed");
     }
   }
 
