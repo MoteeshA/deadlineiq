@@ -374,22 +374,7 @@ export default function Layout({ children }) {
               );
             })}
 
-            {/* Product Reveal */}
-            <Link
-              to="/"
-              onClick={async (e) => {
-                e.preventDefault();
-                await handleLogout();
-              }}
-              className="flex items-center gap-4 px-3.5 py-3 rounded-2xl text-sm font-medium transition-all duration-250 group text-slate-450 hover:text-slate-150 hover:bg-white/[0.015] cursor-pointer"
-            >
-              <span className="shrink-0 text-slate-500 group-hover:text-slate-350 transition-transform duration-200 group-hover:scale-110">
-                🚀
-              </span>
-              <span className="whitespace-nowrap text-xs font-bold font-mono tracking-wider ml-1">
-                Product Reveal
-              </span>
-            </Link>
+            {/* End of main navigation */}
           </nav>
         </div>
 
