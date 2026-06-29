@@ -389,15 +389,25 @@ export default function Extension() {
               {/* Draggable Button */}
               <a 
                 href={bookmarkletCode}
-                onClick={(e) => e.preventDefault()}
                 className="w-full py-4 text-center rounded-xl bg-gradient-to-r from-indigo-500 to-purple-650 hover:scale-[1.02] active:scale-[0.98] transition text-white font-bold text-xs tracking-wider uppercase shadow-xl shadow-indigo-500/15 cursor-grab block border border-indigo-400/20"
                 title="Drag me to your Bookmarks Bar!"
               >
                 📥 Save to DeadlineIQ
               </a>
-              <div className="text-[9px] text-center text-slate-500 font-bold uppercase tracking-wider">
+              <div className="text-[9px] text-center text-slate-550 font-bold uppercase tracking-wider">
                 ▲ DRAG THIS BUTTON TO YOUR BOOKMARKS BAR
               </div>
+
+              {/* Manual Copy Button */}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(bookmarkletCode);
+                  addToast("Bookmarklet code copied to clipboard! Paste it into your bookmark's URL.", { type: "success" });
+                }}
+                className="w-full py-2.5 text-center rounded-xl bg-slate-900/50 border border-slate-850 hover:bg-slate-850 transition text-slate-350 font-bold text-[10px] tracking-wider uppercase cursor-pointer"
+              >
+                Copy Code (for manual bookmark)
+              </button>
             </div>
           </div>
         </div>
