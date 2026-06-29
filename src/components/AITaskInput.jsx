@@ -43,6 +43,14 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
 
     recognition.start();
   };
+
+  const toDatetimeLocal = (val) => {
+    if (!val) return "";
+    const date = new Date(val);
+    if (isNaN(date.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
   
   // States for interactive parsed task
   const [parsedTask, setParsedTask] = useState(null);
@@ -335,7 +343,7 @@ export default function AITaskInput({ existingTasks, onSaveTask }) {
                   </span>
                   <input
                     type="datetime-local"
-                    value={(parsedTask.taskKind === "event" ? parsedTask.eventStart : parsedTask.deadline)?.slice(0, 16) || ""}
+                    value={toDatetimeLocal(parsedTask.taskKind === "event" ? parsedTask.eventStart : parsedTask.deadline)}
                     onChange={(e) => {
                       if (parsedTask.taskKind === "event") {
                         const eventStart = e.target.value;

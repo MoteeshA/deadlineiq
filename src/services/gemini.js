@@ -25,10 +25,29 @@ function withTimeout(promise, ms, errorMessage = "Timeout exceeded") {
   ]);
 }
 
+function parseLlmDateToLocal(dateStr) {
+  if (!dateStr) return null;
+  let cleanStr = dateStr.trim();
+  
+  // If it's a date-only string like "YYYY-MM-DD", append local time default (5 PM)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) {
+    cleanStr = `${cleanStr}T17:00:00`;
+  } else {
+    // Strip trailing Z or timezone offset so JS parses it as local time
+    cleanStr = cleanStr.replace(/Z|[+-]\d{2}:\d{2}$/i, "");
+  }
+  
+  const date = new Date(cleanStr);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function toIsoOrNull(value) {
   if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  const date = parseLlmDateToLocal(value);
+  return date ? date.toISOString() : null;
 }
 
 function resolveTimeOnlyReference(userInput) {
@@ -902,13 +921,26 @@ function parseTaskLocally(userInput, errorMsg) {
   // 5. Deadline parser — extended
   let deadline;
   const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  const explicitTime = resolveTimeOnlyReference(userInput);
+  const hasNamedWeekday = dayNames.some(day => normalized.includes(day));
+
+  // Extract custom time if specified
+  let targetHours = 17;
+  let targetMinutes = 0;
+  if (explicitTime) {
+    const timeDate = new Date(explicitTime);
+    targetHours = timeDate.getHours();
+    targetMinutes = timeDate.getMinutes();
+  } else if (normalized.includes("tonight")) {
+    targetHours = 21;
+  }
 
   const getNextWeekday = (targetDay) => {
     const d = new Date();
     const current = d.getDay();
     const diff = (targetDay - current + 7) % 7 || 7;
     d.setDate(d.getDate() + diff);
-    d.setHours(17, 0, 0, 0);
+    d.setHours(targetHours, targetMinutes, 0, 0);
     return d.toISOString();
   };
 
@@ -923,28 +955,26 @@ function parseTaskLocally(userInput, errorMsg) {
   // specific date like "june 30", "july 5", "30th june"
   const monthNames = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
   const monthMatch = normalized.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?/);
-  const explicitTime = resolveTimeOnlyReference(userInput);
-  const hasNamedWeekday = dayNames.some(day => normalized.includes(day));
 
   if (explicitTime && !monthMatch && !inDaysMatch && !daysFromNowMatch && !nextWeekMatch && !endOfWeekMatch && !hasNamedWeekday) {
     deadline = explicitTime;
   } else if (normalized.includes("today")) {
-    const d = new Date(); d.setHours(17, 0, 0, 0);
+    const d = new Date(); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (normalized.includes("tonight")) {
-    const d = new Date(); d.setHours(21, 0, 0, 0);
+    const d = new Date(); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (normalized.includes("tomorrow")) {
-    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(17, 0, 0, 0);
+    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (inDaysMatch) {
-    const d = new Date(); d.setDate(d.getDate() + parseInt(inDaysMatch[1])); d.setHours(17, 0, 0, 0);
+    const d = new Date(); d.setDate(d.getDate() + parseInt(inDaysMatch[1])); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (daysFromNowMatch) {
-    const d = new Date(); d.setDate(d.getDate() + parseInt(daysFromNowMatch[1])); d.setHours(17, 0, 0, 0);
+    const d = new Date(); d.setDate(d.getDate() + parseInt(daysFromNowMatch[1])); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (nextWeekMatch) {
-    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(17, 0, 0, 0);
+    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(targetHours, targetMinutes, 0, 0);
     deadline = d.toISOString();
   } else if (endOfWeekMatch) {
     deadline = getNextWeekday(5); // Friday
@@ -955,7 +985,7 @@ function parseTaskLocally(userInput, errorMsg) {
     else if (monthMatch[3] && monthMatch[4]) { day = parseInt(monthMatch[4]); monthStr = monthMatch[3]; }
     const monthIdx = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
     if (monthIdx !== -1 && day >= 1 && day <= 31) {
-      const d = new Date(); d.setMonth(monthIdx); d.setDate(day); d.setHours(17, 0, 0, 0);
+      const d = new Date(); d.setMonth(monthIdx); d.setDate(day); d.setHours(targetHours, targetMinutes, 0, 0);
       if (d < new Date()) d.setFullYear(d.getFullYear() + 1); // past month = next year
       deadline = d.toISOString();
     }
@@ -965,8 +995,8 @@ function parseTaskLocally(userInput, errorMsg) {
     if (foundDay !== -1) {
       deadline = getNextWeekday(foundDay);
     } else {
-      // Default: tomorrow 5pm
-      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(17, 0, 0, 0);
+      // Default: tomorrow 5pm or custom time
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(targetHours, targetMinutes, 0, 0);
       deadline = d.toISOString();
     }
   }
