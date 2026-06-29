@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { auth, db } from "../firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query as fsQuery, where, orderBy as fsOrderBy, limit as fsLimit, serverTimestamp } from "firebase/firestore";
 import { useToast } from "../context/ToastContext";
 import { parseTaskWithGemini, parseMediaWithGemini } from "../services/gemini";
 import { checkAndTriggerEmail } from "../services/email";
@@ -184,6 +184,31 @@ export default function Extension() {
       throw new Error("No active user session found. Please log in.");
     }
 
+    // ── Duplicate Guard ────────────────────────────────────────────────────────
+    // If a task with the same title was saved in the last 5 minutes, skip saving
+    // and surface the existing one instead (prevents double-click / multi-tab duplicates)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentQuery = fsQuery(
+      collection(db, "users", user.uid, "tasks"),
+      where("title", "==", taskData.title || "Untitled Captured Task"),
+      fsOrderBy("createdAt", "desc"),
+      fsLimit(1)
+    );
+    const recentSnap = await getDocs(recentQuery);
+    if (!recentSnap.empty) {
+      const existingDoc = recentSnap.docs[0];
+      const existingData = existingDoc.data();
+      const createdAt = existingData.createdAt?.toDate ? existingData.createdAt.toDate() : new Date(existingData.createdAt);
+      if (createdAt > fiveMinutesAgo) {
+        // Already saved recently — just surface it
+        const existing = { id: existingDoc.id, ...existingData };
+        setRecentTask(existing);
+        addToast(`"${existing.title}" already captured — showing existing task.`, { type: "info" });
+        return;
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const newTask = {
       title: taskData.title || "Untitled Captured Task",
       deadline: taskData.deadline ? new Date(taskData.deadline) : null,
@@ -198,7 +223,7 @@ export default function Extension() {
       eligibility: taskData.eligibility || null,
       location: taskData.location || null,
       subtasks: taskData.subtasks || [],
-      status: taskData.taskKind === "event" ? "scheduled" : "today",
+      status: "today",
       createdAt: serverTimestamp(),
       deferralCount: 0,
       deferralHistory: [],

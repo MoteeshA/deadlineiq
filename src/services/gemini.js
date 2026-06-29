@@ -33,23 +33,40 @@ function toIsoOrNull(value) {
 
 function resolveTimeOnlyReference(userInput) {
   const normalized = userInput.toLowerCase();
-  const timeMatch = normalized.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
-  if (!timeMatch) return null;
+  const TIME_PATTERN = /(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/g;
 
-  let hours = parseInt(timeMatch[1], 10);
-  const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-  const meridiem = timeMatch[3].replace(/\./g, "");
-  if (meridiem === "pm" && hours !== 12) hours += 12;
-  if (meridiem === "am" && hours === 12) hours = 0;
+  // Priority 1: Look for time that follows event-anchor keywords (e.g. "meeting at 10AM", "call at 3PM")
+  // This avoids picking up email metadata timestamps like "4:03 PM (50 minutes ago)"
+  const anchorPattern = /\b(?:meeting|meet|call|appointment|interview|webinar|class|session|scheduled?|come|join|attend)\b[^.!?\n]{0,30}?\bat\s*(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/i;
+  const anchorMatch = normalized.match(anchorPattern);
+
+  let matchedHours, matchedMinutes, matchedMeridiem;
+
+  if (anchorMatch) {
+    matchedHours = parseInt(anchorMatch[1], 10);
+    matchedMinutes = anchorMatch[2] ? parseInt(anchorMatch[2], 10) : 0;
+    matchedMeridiem = anchorMatch[3].replace(/\./g, "");
+  } else {
+    // Priority 2: fall back to first stand-alone time in text
+    const firstMatch = normalized.match(/\b(?:at\s*)?(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)\b/);
+    if (!firstMatch) return null;
+    matchedHours = parseInt(firstMatch[1], 10);
+    matchedMinutes = firstMatch[2] ? parseInt(firstMatch[2], 10) : 0;
+    matchedMeridiem = firstMatch[3].replace(/\./g, "");
+  }
+
+  let hours = matchedHours;
+  if (matchedMeridiem === "pm" && hours !== 12) hours += 12;
+  if (matchedMeridiem === "am" && hours === 12) hours = 0;
 
   const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
+  date.setHours(hours, matchedMinutes, 0, 0);
 
+  // If "tomorrow" is mentioned, shift to tomorrow
   if (normalized.includes("tomorrow")) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    date.setFullYear(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+    date.setDate(date.getDate() + 1);
   } else if (!normalized.includes("today") && date.getTime() <= Date.now()) {
+    // Time already passed today → schedule for tomorrow
     date.setDate(date.getDate() + 1);
   }
 
