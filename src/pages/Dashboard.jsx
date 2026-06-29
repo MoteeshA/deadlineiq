@@ -238,6 +238,7 @@ export default function Dashboard() {
       await updateDoc(taskRef, { status: "completed" });
       trainLocalModel(task, false); // Train online ML model: 0% procrastination
       addToast(`Completed "${task.title}"! 🎉`, { type: "success" });
+      addToast("🧠 Local model updated", { type: "info", duration: 2000 });
     } catch (error) {
       console.error("Error completing task:", error);
       addToast("Failed to complete task.", { type: "error" });
@@ -268,7 +269,7 @@ export default function Dashboard() {
       await logAvoidanceEvent(user.uid, task, newDeadline, reason);
 
       trainLocalModel(task, true); // Train online ML model: 100% procrastination
-
+      addToast("🧠 Local model updated", { type: "info", duration: 2000 });
       addToast(`Snoozed "${task.title}"`, { type: "success" });
     } catch (error) {
       console.error("Error deferring task:", error);

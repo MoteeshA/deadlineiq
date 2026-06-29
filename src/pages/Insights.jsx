@@ -35,7 +35,7 @@ export default function Insights() {
       `📈 PERFORMANCE METRICS:\n` +
       `- Active Commitments: ${activeCount} tasks\n` +
       `- Completed Tasks: ${completedCount} tasks\n` +
-      `- Primary Procrastination Fingerprint: ${fingerprint.primaryPattern} (${fingerprint.percentage}% match)\n\n` +
+      `- Primary Procrastination Fingerprint: ${fingerprint?.primaryPattern || "Not yet analyzed"} (${fingerprint?.percentage || "—"}% match)\n\n` +
       `🧠 AI FORENSIC ANALYSIS:\n` +
       `"${fingerprint.explanation}"\n\n` +
       `💡 STRATEGIC ACTION STRATEGY:\n` +
@@ -51,16 +51,8 @@ export default function Insights() {
     addToast("Opened mail client to dispatch your AI digest!", { type: "success" });
   };
 
-  // Load default/cached fingerprint
-  const [fingerprint, setFingerprint] = useState({
-    primaryPattern: "Fear of Failure",
-    percentage: 78,
-    explanation: "You frequently delay creative/writing tasks due to high standard constraints. Utilizing structured subtask goals reduces starting friction.",
-    triggerCategories: ["Writing", "Presentations"],
-    safeZoneCategories: ["Research", "Admin"],
-    avgHoursBeforeDeadline: 3.2,
-    trendImprovement: "Stable",
-  });
+  // Load default/cached fingerprint — null until real AI analysis is run
+  const [fingerprint, setFingerprint] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -150,20 +142,36 @@ export default function Insights() {
 
   const scoreDetails = getScoreBand(calculatedScore);
 
-  // 1. Score History Data Points for the past 7 days (simulated bound to calculatedScore):
-  const getHistoricalPoints = (score) => {
-    return [
-      Math.max(10, Math.min(100, Math.round(score * 0.82))),
-      Math.max(10, Math.min(100, Math.round(score * 0.90))),
-      Math.max(10, Math.min(100, Math.round(score * 0.85))),
-      Math.max(10, Math.min(100, Math.round(score * 0.93))),
-      Math.max(10, Math.min(100, Math.round(score * 0.88))),
-      Math.max(10, Math.min(100, Math.round(score * 0.96))),
-      score
-    ];
+  // Save today's score snapshot to localStorage keyed by date
+  useEffect(() => {
+    if (user && !loading && totalTasks > 0) {
+      const today = new Date().toISOString().split("T")[0]; // "2026-06-29"
+      const historyKey = `deadlineiq_score_history_${user.uid}`;
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch {}
+      // Only save once per day
+      if (!history.find(h => h.date === today)) {
+        history.push({ date: today, score: calculatedScore });
+        // Keep only last 7 days
+        if (history.length > 7) history = history.slice(-7);
+        localStorage.setItem(historyKey, JSON.stringify(history));
+      }
+    }
+  }, [user, loading, calculatedScore, totalTasks]);
+
+  // 1. Load real score history from localStorage
+  const getRealHistoricalPoints = () => {
+    if (!user) return Array(7).fill(calculatedScore);
+    const historyKey = `deadlineiq_score_history_${user.uid}`;
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(historyKey) || "[]"); } catch {}
+    if (history.length === 0) return Array(7).fill(calculatedScore);
+    // Pad left with first known value if fewer than 7 days
+    while (history.length < 7) history.unshift({ date: "", score: history[0].score });
+    return history.slice(-7).map(h => h.score);
   };
 
-  const historyData = getHistoricalPoints(calculatedScore);
+  const historyData = getRealHistoricalPoints();
 
   // 2. Generate SVG coordinates for a trend line (300px wide, 100px high)
   const getSvgPath = (data) => {
@@ -420,51 +428,62 @@ export default function Insights() {
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                 Procrastination Profile
               </span>
-              <span className="text-[10px] font-bold text-indigo-400 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full shrink-0">
-                {fingerprint.primaryPattern}
-              </span>
+              {fingerprint && (
+                <span className="text-[10px] font-bold text-indigo-400 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full shrink-0">
+                  {fingerprint.primaryPattern}
+                </span>
+              )}
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                  AI Forensic Analysis
-                </span>
-                <p className="text-xs text-slate-350 leading-relaxed font-semibold">
-                  {fingerprint.explanation}
+            {!fingerprint ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+                <span className="text-3xl">🔍</span>
+                <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                  No AI analysis yet. Click <span className="text-indigo-400">"Recalculate AI Fingerprint"</span> above to analyze your procrastination patterns based on your real task data.
                 </p>
               </div>
-
-              <div className="grid grid-cols-1 gap-4">
-                {/* Triggers */}
+            ) : (
+              <div className="space-y-6">
                 <div>
                   <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                    🚨 Avoidance Triggers
+                    AI Forensic Analysis
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {fingerprint.triggerCategories?.map((c) => (
-                      <span key={c} className="text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        {c}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-xs text-slate-350 leading-relaxed font-semibold">
+                    {fingerprint.explanation}
+                  </p>
                 </div>
 
-                {/* Safe Zones */}
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                    🟢 Safe Zones
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {fingerprint.safeZoneCategories?.map((c) => (
-                      <span key={c} className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        {c}
-                      </span>
-                    ))}
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Triggers */}
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                      🚨 Avoidance Triggers
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fingerprint.triggerCategories?.map((c) => (
+                        <span key={c} className="text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Safe Zones */}
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                      🟢 Safe Zones
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {fingerprint.safeZoneCategories?.map((c) => (
+                        <span key={c} className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 border-t border-slate-800/60 mt-6 pt-5 text-xs text-slate-400">
@@ -473,15 +492,15 @@ export default function Insights() {
                 Action Pace
               </span>
               <span className="text-xs font-bold text-slate-205 mt-1 block">
-                avg {fingerprint.avgHoursBeforeDeadline || "3.2"}h before deadline
+                avg {fingerprint?.avgHoursBeforeDeadline || "—"}h before deadline
               </span>
             </div>
             <div>
               <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                 Behavior Trend
               </span>
-              <span className={`text-xs font-bold mt-1 block ${fingerprint.trendImprovement === "Improving" ? "text-emerald-400" : "text-amber-400"}`}>
-                {fingerprint.trendImprovement || "Stable"}
+              <span className={`text-xs font-bold mt-1 block ${fingerprint?.trendImprovement === "Improving" ? "text-emerald-400" : "text-amber-400"}`}>
+                {fingerprint?.trendImprovement || "—"}
               </span>
             </div>
           </div>

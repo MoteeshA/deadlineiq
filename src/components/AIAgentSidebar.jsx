@@ -2,21 +2,49 @@ import { useState, useEffect, useRef } from "react";
 import { chatWithProductivityAgent } from "../services/gemini";
 import { useToast } from "../context/ToastContext";
 
+const WELCOME_MSG = {
+  id: "msg-welcome",
+  role: "model",
+  text: "Hey! I'm your IQ Coach. I analyze your productivity forensics and help you optimize your commitments. Ask me anything, or let me plan your tasks!",
+  time: new Date().toISOString(),
+};
+
 export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecuteAction }) {
   const { addToast } = useToast();
-  const [messages, setMessages] = useState([
-    {
-      id: "msg-welcome",
-      role: "model",
-      text: "Hey! I'm your IQ Coach. I analyze your productivity forensics and help you optimize your commitments. Ask me anything, or let me plan your tasks!",
-      time: new Date(),
-    },
-  ]);
+
+  // FIX: Load persisted chat history from localStorage on mount
+  const [messages, setMessages] = useState(() => {
+    if (!user) return [WELCOME_MSG];
+    try {
+      const saved = localStorage.getItem(`deadlineiq_chat_history_${user.uid}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Restore Date objects
+        return parsed.map(m => ({ ...m, time: new Date(m.time) }));
+      }
+    } catch {}
+    return [WELCOME_MSG];
+  });
+
+  // FIX: DEFER confirmation state — ask user before writing to Firestore
+  const [deferConfirm, setDeferConfirm] = useState(null); // { action, label }
+
   const [inputValue, setInputValue] = useState("");
   const [sending, setSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef(null);
   const activeAudioRef = useRef(null);
+
+  // FIX: Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (!user || messages.length === 0) return;
+    try {
+      localStorage.setItem(
+        `deadlineiq_chat_history_${user.uid}`,
+        JSON.stringify(messages.slice(-50)) // keep last 50 messages
+      );
+    } catch {}
+  }, [messages, user]);
 
   const startListening = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -122,19 +150,6 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
         const elKey = localStorage.getItem("deadlineiq_elevenlabs_api_key");
         const elVoice = localStorage.getItem("deadlineiq_elevenlabs_voice_id") || "21m00Tcm4TlvDq8ikWAM";
 
-        const playGoogleFallback = () => {
-          try {
-            const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en-IN&client=tw-ob&q=${encodeURIComponent(conciseReply)}`;
-            const audio = new Audio(url);
-            audio.playbackRate = 1.12;
-            activeAudioRef.current = audio;
-            audio.play();
-          } catch (err) {
-            console.warn("Sidebar Google fallback failed, fallback to local:", err);
-            playLocalFallback();
-          }
-        };
-
         const playLocalFallback = () => {
           const utterance = new SpeechSynthesisUtterance(conciseReply);
           if (window.speechSynthesis) {
@@ -165,10 +180,7 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
               body: JSON.stringify({
                 text: conciseReply,
                 model_id: "eleven_monolingual_v1",
-                voice_settings: {
-                  stability: 0.75,
-                  similarity_boost: 0.75
-                }
+                voice_settings: { stability: 0.75, similarity_boost: 0.75 }
               })
             }).then(res => {
               if (!res.ok) throw new Error("ElevenLabs fail");
@@ -178,30 +190,37 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
               const audio = new Audio(objectUrl);
               audio.playbackRate = 1.12;
               activeAudioRef.current = audio;
-              audio.onended = () => {
-                URL.revokeObjectURL(objectUrl);
-              };
-              audio.onerror = () => {
-                URL.revokeObjectURL(objectUrl);
-                playGoogleFallback();
-              };
+              audio.onended = () => URL.revokeObjectURL(objectUrl);
+              audio.onerror = () => { URL.revokeObjectURL(objectUrl); playLocalFallback(); };
               audio.play();
             }).catch(err => {
-              console.warn("ElevenLabs sidebar play failed, using google fallback:", err);
-              playGoogleFallback();
+              console.warn("ElevenLabs failed, using Web Speech:", err);
+              playLocalFallback();
             });
             return;
           } catch (err) {
-            console.warn("ElevenLabs sidebar catch, using google fallback:", err);
+            console.warn("ElevenLabs catch, using Web Speech:", err);
           }
         }
 
-        playGoogleFallback();
+        // FIX: use Web Speech directly — removed Google Translate TTS (unofficial/unreliable endpoint)
+        playLocalFallback();
       }
 
-      // Execute automation trigger if any
+      // FIX: Intercept DEFER_TASK — show confirmation before writing to Firestore
       if (response.action && response.action.type !== "NONE") {
-        onExecuteAction(response.action);
+        if (response.action.type === "DEFER_TASK") {
+          const targetTask = tasks.find(t => t.id === response.action.payload?.taskId);
+          const newDate = response.action.payload?.newDeadline
+            ? new Date(response.action.payload.newDeadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "a new date";
+          setDeferConfirm({
+            action: response.action,
+            label: `Reschedule "${targetTask?.title || "task"}" to ${newDate}?`
+          });
+        } else {
+          onExecuteAction(response.action);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -251,6 +270,27 @@ export default function AIAgentSidebar({ isOpen, onClose, user, tasks, onExecute
           </svg>
         </button>
       </div>
+
+      {/* FIX: DEFER Confirmation Banner */}
+      {deferConfirm && (
+        <div className="mx-3 mt-3 p-3 bg-amber-950/40 border border-amber-500/30 rounded-xl flex flex-col gap-2">
+          <p className="text-xs font-bold text-amber-300">{deferConfirm.label}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { onExecuteAction(deferConfirm.action); setDeferConfirm(null); addToast("Task rescheduled!", { type: "success" }); }}
+              className="flex-1 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition"
+            >
+              ✓ Confirm
+            </button>
+            <button
+              onClick={() => { setDeferConfirm(null); addToast("Reschedule cancelled.", { type: "info" }); }}
+              className="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 font-bold text-[10px] uppercase tracking-wider transition"
+            >
+              ✗ Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">

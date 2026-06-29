@@ -741,31 +741,72 @@ function parseTaskLocally(userInput, errorMsg) {
     type = "Admin";
   }
 
-  // 5. Deadline parser
+  // 5. Deadline parser — extended
   let deadline;
-  
+  const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+
+  const getNextWeekday = (targetDay) => {
+    const d = new Date();
+    const current = d.getDay();
+    const diff = (targetDay - current + 7) % 7 || 7;
+    d.setDate(d.getDate() + diff);
+    d.setHours(17, 0, 0, 0);
+    return d.toISOString();
+  };
+
+  // "in X days"
+  const inDaysMatch = normalized.match(/in\s+(\d+)\s+days?/);
+  // "X days from now"
+  const daysFromNowMatch = normalized.match(/(\d+)\s+days?\s+from\s+now/);
+  // "next week"
+  const nextWeekMatch = normalized.includes("next week");
+  // "end of week" or "this week"
+  const endOfWeekMatch = normalized.includes("end of week") || normalized.includes("this week");
+  // specific date like "june 30", "july 5", "30th june"
+  const monthNames = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+  const monthMatch = normalized.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)|(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?/);
+
   if (normalized.includes("today")) {
-    const today = new Date();
-    today.setHours(17, 0, 0, 0);
-    deadline = today.toISOString();
+    const d = new Date(); d.setHours(17, 0, 0, 0);
+    deadline = d.toISOString();
+  } else if (normalized.includes("tonight")) {
+    const d = new Date(); d.setHours(21, 0, 0, 0);
+    deadline = d.toISOString();
   } else if (normalized.includes("tomorrow")) {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(17, 0, 0, 0);
-    deadline = tomorrow.toISOString();
-  } else if (normalized.includes("friday")) {
-    const tempDate = new Date();
-    const currentDay = tempDate.getDay();
-    const daysUntilFriday = (5 - currentDay + 7) % 7 || 7;
-    tempDate.setDate(tempDate.getDate() + daysUntilFriday);
-    tempDate.setHours(17, 0, 0, 0);
-    deadline = tempDate.toISOString();
+    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(17, 0, 0, 0);
+    deadline = d.toISOString();
+  } else if (inDaysMatch) {
+    const d = new Date(); d.setDate(d.getDate() + parseInt(inDaysMatch[1])); d.setHours(17, 0, 0, 0);
+    deadline = d.toISOString();
+  } else if (daysFromNowMatch) {
+    const d = new Date(); d.setDate(d.getDate() + parseInt(daysFromNowMatch[1])); d.setHours(17, 0, 0, 0);
+    deadline = d.toISOString();
+  } else if (nextWeekMatch) {
+    const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(17, 0, 0, 0);
+    deadline = d.toISOString();
+  } else if (endOfWeekMatch) {
+    deadline = getNextWeekday(5); // Friday
+  } else if (monthMatch) {
+    // Parse specific date like "june 30" or "30 june"
+    let day, monthStr;
+    if (monthMatch[1] && monthMatch[2]) { day = parseInt(monthMatch[1]); monthStr = monthMatch[2]; }
+    else if (monthMatch[3] && monthMatch[4]) { day = parseInt(monthMatch[4]); monthStr = monthMatch[3]; }
+    const monthIdx = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
+    if (monthIdx !== -1 && day >= 1 && day <= 31) {
+      const d = new Date(); d.setMonth(monthIdx); d.setDate(day); d.setHours(17, 0, 0, 0);
+      if (d < new Date()) d.setFullYear(d.getFullYear() + 1); // past month = next year
+      deadline = d.toISOString();
+    }
   } else {
-    // Default to tomorrow at 5pm
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(17, 0, 0, 0);
-    deadline = tomorrow.toISOString();
+    // Check for named weekdays: monday, tuesday, ...
+    const foundDay = dayNames.findIndex(day => normalized.includes(day));
+    if (foundDay !== -1) {
+      deadline = getNextWeekday(foundDay);
+    } else {
+      // Default: tomorrow 5pm
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(17, 0, 0, 0);
+      deadline = d.toISOString();
+    }
   }
 
   // 6. Subtasks generator
@@ -814,11 +855,10 @@ function parseTaskLocally(userInput, errorMsg) {
     }
   }
 
-  const isHackathonSim = normalized.includes("hackathon") || normalized.includes("contest") || normalized.includes("hac'kp") || normalized.includes("kerala");
-  const registrationLink = isHackathonSim ? "https://hackp.kerala.gov.in/" : null;
-  const prizes = isHackathonSim ? "₹5,00,000 Cash Pool" : null;
-  const eligibility = isHackathonSim ? "Developers & Students" : null;
-  const location = isHackathonSim ? "Kerala Cyberdome" : null;
+  const registrationLink = null;
+  const prizes = null;
+  const eligibility = null;
+  const location = null;
 
   return {
     title,

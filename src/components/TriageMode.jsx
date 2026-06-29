@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { generateConsequences } from "../services/forensics";
 import { useToast } from "../context/ToastContext";
 
@@ -6,6 +6,7 @@ export default function TriageMode({ tasks, onDeprioritize }) {
   const { addToast } = useToast();
   const [consequences, setConsequences] = useState({});
   const [loading, setLoading] = useState(false);
+  const hasFetchedRef = useRef(false); // FIX: prevent re-fetching on every task change
 
   // Find active tasks due in the next 48 hours
   const now = new Date();
@@ -18,29 +19,36 @@ export default function TriageMode({ tasks, onDeprioritize }) {
     return deadlineDate >= now && deadlineDate <= fortyEightHoursFromNow;
   });
 
-  // Calculate overload sum
+  // FIX: threshold corrected to 16h (matches the UI label)
   const totalHours = crisisTasks.reduce((sum, t) => sum + (t.estimatedHours || 0), 0);
-  const isOverloaded = totalHours > 22.4; // 16h capacity * 1.4 = 22.4h
+  const isOverloaded = totalHours > 16;
   const currentTaskIds = crisisTasks.map(t => t.id).sort().join(",");
 
-  // Fetch consequences if overloaded
+  // FIX: only fetch consequences once per triage session, not on every task update
   useEffect(() => {
-    if (!isOverloaded || crisisTasks.length === 0) return;
+    if (!isOverloaded || crisisTasks.length === 0) {
+      hasFetchedRef.current = false; // reset when triage clears
+      return;
+    }
+    if (hasFetchedRef.current) return; // already fetched this session
     
     async function loadConsequences() {
+      hasFetchedRef.current = true;
       setLoading(true);
       try {
         const map = await generateConsequences(crisisTasks);
         setConsequences(map);
       } catch (err) {
         console.error("Failed to generate consequences:", err);
+        hasFetchedRef.current = false; // allow retry on error
       } finally {
         setLoading(false);
       }
     }
 
     loadConsequences();
-  }, [isOverloaded, currentTaskIds, crisisTasks]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOverloaded, currentTaskIds]);
 
   if (!isOverloaded) return null;
 

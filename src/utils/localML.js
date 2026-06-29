@@ -6,7 +6,7 @@
 
 class LightMLP {
   constructor() {
-    this.inputSize = 4;
+    this.inputSize = 5; // FIX: added task type as 5th feature
     this.hiddenSize = 5;
     this.outputSize = 1;
 
@@ -15,11 +15,14 @@ class LightMLP {
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        this.w1 = data.w1;
-        this.b1 = data.b1;
-        this.w2 = data.w2;
-        this.b2 = data.b2;
-        return;
+        // FIX: discard old 4-feature weights, force reinit with 5 features
+        if (data.w1 && data.w1.length === 5) {
+          this.w1 = data.w1;
+          this.b1 = data.b1;
+          this.w2 = data.w2;
+          this.b2 = data.b2;
+          return;
+        }
       } catch (e) {
         console.warn("Failed to parse local weights, re-initializing", e);
       }
@@ -35,6 +38,30 @@ class LightMLP {
       Array.from({ length: this.outputSize }, () => (Math.random() - 0.5) * Math.sqrt(2.0 / this.hiddenSize))
     );
     this.b2 = Array(this.outputSize).fill(0.01);
+
+    // FIX: cold-start pre-training with synthetic examples so new users
+    // don't see random risk scores. High priority + high deferrals = high risk.
+    this._coldStartTrain();
+  }
+
+  _coldStartTrain() {
+    const syntheticExamples = [
+      // [priority, estHours, deferrals, urgency, typeRisk] → label
+      { inputs: [0.9, 0.8, 0.8, 0.9, 0.8], label: 1.0 }, // high risk
+      { inputs: [0.9, 0.6, 0.6, 0.8, 0.7], label: 0.9 },
+      { inputs: [0.5, 0.5, 0.4, 0.6, 0.5], label: 0.5 }, // medium risk
+      { inputs: [0.5, 0.3, 0.2, 0.5, 0.4], label: 0.4 },
+      { inputs: [0.1, 0.1, 0.0, 0.1, 0.1], label: 0.1 }, // low risk
+      { inputs: [0.1, 0.2, 0.0, 0.2, 0.2], label: 0.15 },
+      { inputs: [0.9, 0.9, 1.0, 1.0, 0.9], label: 1.0 }, // overdue + high defers
+      { inputs: [0.1, 0.1, 0.0, 0.8, 0.1], label: 0.3 }, // urgent but easy
+    ];
+    for (let epoch = 0; epoch < 30; epoch++) {
+      syntheticExamples.forEach(({ inputs, label }) => {
+        this.train(inputs, [label], 0.1);
+      });
+    }
+    this.save();
   }
 
   // Sigmoid Activation Function
@@ -172,15 +199,38 @@ function extractTaskFeatures(task) {
   if (task.deadline) {
     const dl = task.deadline.toDate ? task.deadline.toDate() : new Date(task.deadline);
     const hoursRemaining = (dl.getTime() - Date.now()) / (1000 * 60 * 60);
-    // Normalized between 0 (far away) and 1 (urgent/past)
     if (hoursRemaining <= 0) {
       timeNorm = 1.0;
     } else {
-      timeNorm = Math.max(0.0, 1.0 - (hoursRemaining / 168.0)); // scale against 1 week (168 hours)
+      timeNorm = Math.max(0.0, 1.0 - (hoursRemaining / 168.0));
     }
   }
 
-  return [priorityVal, estHoursNorm, deferralsNorm, timeNorm];
+  // 5. FIX: Task type risk score — creative/writing tasks have higher procrastination risk
+  // Load user's trigger categories from forensic cache to personalize this
+  let typeRisk = 0.4; // neutral default
+  const type = (task.type || "General").toLowerCase();
+  // Base type risk map
+  const typeRiskMap = {
+    writing: 0.75, presentations: 0.8, programming: 0.6,
+    learning: 0.5, admin: 0.3, research: 0.35, general: 0.4, event: 0.45
+  };
+  typeRisk = typeRiskMap[type] ?? 0.4;
+  // Personalize: boost risk if this type is a known trigger category for this user
+  try {
+    const cachedPatternRaw = localStorage.getItem(
+      Object.keys(localStorage).find(k => k.startsWith("deadlineiq_pattern_")) || ""
+    );
+    if (cachedPatternRaw) {
+      const cachedPattern = JSON.parse(cachedPatternRaw);
+      const triggers = (cachedPattern.triggerCategories || []).map(c => c.toLowerCase());
+      if (triggers.some(t => type.includes(t) || t.includes(type))) {
+        typeRisk = Math.min(1.0, typeRisk + 0.2); // boost if known trigger
+      }
+    }
+  } catch {}
+
+  return [priorityVal, estHoursNorm, deferralsNorm, timeNorm, typeRisk];
 }
 
 /**
