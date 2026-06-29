@@ -184,7 +184,7 @@ function parseTaskLocally(userInput, errorMsg) {
   // 6. Subtasks generator
   let subtasks = [];
   if (!isVague) {
-    const titleClean = userInput.replace(/(by|at|takes|priority|urgent|hours|hours|h|hrs|high|low|medium).*/gi, "").trim();
+    const titleClean = userInput.replace(/\b(by|at|takes|priority|urgent|hours|h|hrs|high|low|medium)\b.*/gi, "").trim();
     const subEstimates = [
       Math.max(0.5, Math.round((estimatedHours * 0.25) * 10) / 10),
       Math.max(0.5, Math.round((estimatedHours * 0.50) * 10) / 10),
@@ -228,7 +228,7 @@ function parseTaskLocally(userInput, errorMsg) {
   }
 
   return {
-    title: userInput.replace(/(by|at|takes|priority|urgent|hours|hours|h|hrs|high|low|medium).*/gi, "").trim() || userInput,
+    title: userInput.replace(/\b(by|at|takes|priority|urgent|hours|h|hrs|high|low|medium)\b.*/gi, "").trim() || userInput,
     deadline,
     estimatedHours,
     priority,
