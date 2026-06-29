@@ -56,7 +56,7 @@ export default function Extension() {
           
           // Call AI parser
           const taskData = await parseTaskWithGemini(contentSource, setStatusText);
-          await saveCapturedTask(taskData, "Bookmarklet Capture");
+          await saveCapturedTask(taskData, "Bookmarklet Capture", urlParam);
           
           setStatusText("Success! Opportunity logged in your board.");
           setTimeout(() => {
@@ -178,7 +178,7 @@ export default function Extension() {
   }
 
   // Helper to commit parsed task to Firestore & dispatch alerts
-  async function saveCapturedTask(taskData, source) {
+  async function saveCapturedTask(taskData, source, originalUrl = null) {
     const user = auth.currentUser;
     if (!user) {
       throw new Error("No active user session found. Please log in.");
@@ -197,21 +197,19 @@ export default function Extension() {
 
     // ── Smart Registration Link Fallback ──────────────────────────────────
     // Centralized fallback for registrationLink when capturing from bookmarklet or scraping web URL.
+    let parsedUrl = originalUrl || null;
+    if (!parsedUrl && source && source.startsWith("Web: ")) {
+      parsedUrl = source.replace("Web: ", "").trim();
+    } else if (!parsedUrl && source === "Bookmarklet Capture" && sourceUrl) {
+      parsedUrl = sourceUrl;
+    }
+
     let finalRegLink = taskData.registrationLink || null;
-    if (!finalRegLink) {
-      let parsedUrl = null;
-      if (source && source.startsWith("Web: ")) {
-        parsedUrl = source.replace("Web: ", "").trim();
-      } else if (source === "Bookmarklet Capture" && sourceUrl) {
-        parsedUrl = sourceUrl;
-      }
-      
-      if (parsedUrl) {
-        const decodedUrl = decodeURIComponent(parsedUrl);
-        const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|ideathon|buildathon|fellowship|internship|apply|register/i;
-        if (hackathonTypePattern.test(`${decodedUrl} ${taskData.title} ${taskData.type}`)) {
-          finalRegLink = decodedUrl;
-        }
+    if (!finalRegLink && parsedUrl) {
+      const decodedUrl = decodeURIComponent(parsedUrl);
+      const hackathonTypePattern = /hackathon|competition|contest|challenge|devpost|unstop|hackerearth|hack|athon|combat|tournament|olympiad/i;
+      if (hackathonTypePattern.test(`${decodedUrl} ${taskData.title} ${taskData.type}`)) {
+        finalRegLink = decodedUrl;
       }
     }
     // ─────────────────────────────────────────────────────────────────────
@@ -234,7 +232,8 @@ export default function Extension() {
       createdAt: serverTimestamp(),
       deferralCount: 0,
       deferralHistory: [],
-      captureSource: source
+      captureSource: source,
+      sourceUrl: parsedUrl ? decodeURIComponent(parsedUrl) : null
     };
 
     const docRef = await addDoc(collection(db, "users", user.uid, "tasks"), newTask);
@@ -287,7 +286,7 @@ export default function Extension() {
 
       setStatusText("Extracting opportunity details and scheduling constraints with Gemini...");
       const taskData = await parseTaskWithGemini(`Scraped Website URL: ${urlInput}\nPage Contents: ${pageText}`, setStatusText);
-      await saveCapturedTask(taskData, `Web: ${urlInput}`);
+      await saveCapturedTask(taskData, `Web: ${urlInput}`, urlInput);
       
       setUrlInput("");
     } catch (err) {
