@@ -153,12 +153,12 @@ export default function TaskCard({ task, onComplete, onDelete, onDefer, onStart,
           </div>
 
           {/* Risk Label and Action recommendations */}
-          <div className="flex justify-between items-center text-[9px] font-extrabold uppercase tracking-wide select-none">
+          <div className="flex justify-between items-center text-[9px] font-extrabold uppercase tracking-wide select-none gap-2">
             <span className={riskScore > 70 ? "text-rose-400/90" : riskScore > 40 ? "text-amber-400/90" : "text-emerald-400/90"}>
               {riskScore > 70 ? "High Risk" : riskScore > 40 ? "Moderate Risk" : "Low Risk"}
             </span>
-            <span className="text-slate-450 font-black">
-              Recommended: {riskScore > 70 ? "Start Today" : riskScore > 40 ? "Prioritize Soon" : "Maintain Pace"}
+            <span className="text-slate-450 font-black text-right shrink-0">
+              {riskScore > 70 ? "Start Today" : riskScore > 40 ? "Prioritize Soon" : "Maintain Pace"}
             </span>
           </div>
         </div>
