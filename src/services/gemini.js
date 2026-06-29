@@ -1,4 +1,19 @@
 let webLlmEngine = null;
+const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+const GROQ_FAST_MODEL = "llama-3.1-8b-instant";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+export function getConfiguredGroqApiKey() {
+  return localStorage.getItem("deadlineiq_groq_api_key") || import.meta.env.VITE_GROQ_API_KEY || "";
+}
+
+export function getConfiguredGeminiApiKey() {
+  return localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY || "";
+}
+
+export function hasConfiguredCloudAiKey() {
+  return !!(getConfiguredGroqApiKey() || getConfiguredGeminiApiKey());
+}
 
 /**
  * Helper to race a promise against a timeout.
@@ -165,7 +180,7 @@ async function queryLocalOfflineLLM(promptText) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemma2" || "gemma" || "llama3",
+        model: "gemma2",
         messages: [{ role: "user", content: promptText }],
         response_format: { type: "json_object" }
       })
@@ -197,6 +212,62 @@ async function queryLocalOfflineLLM(promptText) {
   }
 
   throw new Error("No local offline LLM active");
+}
+
+export async function callGroqJson({ promptText, apiKey, model = GROQ_CHAT_MODEL, systemText = "You are DeadlineIQ's structured JSON engine." }) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemText },
+        { role: "user", content: promptText }
+      ],
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+    throw new Error(`Groq API Error: ${errMsg}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty response from Groq.");
+  return JSON.parse(content);
+}
+
+async function callGeminiJson({ promptText, apiKey, responseSchema }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: promptText }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+    throw new Error(`Gemini API Call Failed: ${errMsg}`);
+  }
+
+  const result = await response.json();
+  const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Empty response from Gemini.");
+  return JSON.parse(text);
 }
 
 /**
@@ -234,7 +305,7 @@ async function chatWithLocalOfflineLLM(promptText) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemma2" || "gemma" || "llama3",
+        model: "gemma2",
         messages: [{ role: "user", content: simplifiedPrompt }]
       })
     });
@@ -272,7 +343,7 @@ async function chatWithLocalOfflineLLM(promptText) {
  * Queries Groq Cloud API for task parsing (super-fast, free, unlimited).
  */
 async function queryGroqCloudLLM(userInput, currentLocalTime, apiKey) {
-  const url = "https://api.groq.com/openai/v1/chat/completions";
+  const url = "https://corsproxy.io/?https://api.groq.com/openai/v1/chat/completions";
   
   const simplifiedPrompt = `
 You are the AI task extractor of DeadlineIQ.
@@ -302,7 +373,7 @@ Format the response as a single valid JSON object. Do not include extra conversa
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: GROQ_CHAT_MODEL,
       messages: [{ role: "user", content: simplifiedPrompt }],
       response_format: { type: "json_object" }
     })
@@ -321,7 +392,7 @@ Format the response as a single valid JSON object. Do not include extra conversa
  * Queries Groq Cloud API for conversational chatbot replies.
  */
 async function chatWithGroqCloudLLM(message, history, currentTasks, profile, apiKey) {
-  const url = "https://api.groq.com/openai/v1/chat/completions";
+  const url = "https://corsproxy.io/?https://api.groq.com/openai/v1/chat/completions";
   
   const activeTasks = currentTasks.map(t => ({
     id: t.id,
@@ -371,7 +442,7 @@ Return a JSON matching the schema.
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: GROQ_CHAT_MODEL,
       messages,
       response_format: { type: "json_object" }
     })
@@ -388,8 +459,8 @@ Return a JSON matching the schema.
 
 export async function parseTaskWithGemini(userInput, onProgress) {
   // 1. Get API Key (Settings storage or fallback to Env)
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  const groqApiKey = localStorage.getItem("deadlineiq_groq_api_key") || import.meta.env.VITE_GROQ_API_KEY;
+  const apiKey = getConfiguredGeminiApiKey();
+  const groqApiKey = getConfiguredGroqApiKey();
   
   // Format current time context
   const now = new Date();
@@ -425,57 +496,57 @@ Schema Guidelines:
 Return the JSON matching the required schema.
 `;
 
-  if (!apiKey) {
-    if (groqApiKey) {
-      console.info("Gemini key missing but Groq key found. Routing task parse to Groq Cloud API...");
-      try {
-        if (onProgress) onProgress("Parsing task with Groq Cloud (Llama-3)...");
-        const rawParsed = await queryGroqCloudLLM(userInput, currentLocalTime, groqApiKey);
-        
-        // Structure the response details with fuzzy aliases
-        const title = rawParsed.title || rawParsed.task || rawParsed.task_name || rawParsed.name || "Captured Task";
-        const deadline = rawParsed.deadline || null;
-        const estimatedHours = parseFloat(rawParsed.estimatedHours || rawParsed.duration || 2.0) || 2.0;
-        const priority = rawParsed.priority || "medium";
-        const type = rawParsed.type || "General";
-        const subtasksRaw = rawParsed.subtasks || rawParsed.steps || rawParsed.checklist || [];
-        let subtasks = Array.isArray(subtasksRaw) ? subtasksRaw.map(s => {
-          if (typeof s === "string") {
-            return { title: s, durationHours: Math.max(0.5, Math.round((estimatedHours / Math.max(1, subtasksRaw.length)) * 10) / 10) };
-          }
-          return {
-            title: s.title || s.step || s.name || "Subtask step",
-            durationHours: parseFloat(s.durationHours || s.hours || s.duration) || 0.5
-          };
-        }) : [];
-        
-        if (subtasks.length === 0) {
-          subtasks = [
-            { title: `Prepare & organize: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.3 * 10) / 10) },
-            { title: `Execute core actions: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.5 * 10) / 10) },
-            { title: `Final review & polish: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.2 * 10) / 10) }
-          ];
+  if (groqApiKey) {
+    console.info("Routing task parse to primary Groq Cloud API...");
+    try {
+      if (onProgress) onProgress("Parsing task with Groq Cloud...");
+      const rawParsed = await queryGroqCloudLLM(userInput, currentLocalTime, groqApiKey);
+      
+      const title = rawParsed.title || rawParsed.task || rawParsed.task_name || rawParsed.name || "Captured Task";
+      const deadline = rawParsed.deadline || null;
+      const estimatedHours = parseFloat(rawParsed.estimatedHours || rawParsed.duration || 2.0) || 2.0;
+      const priority = rawParsed.priority || "medium";
+      const type = rawParsed.type || "General";
+      const subtasksRaw = rawParsed.subtasks || rawParsed.steps || rawParsed.checklist || [];
+      let subtasks = Array.isArray(subtasksRaw) ? subtasksRaw.map(s => {
+        if (typeof s === "string") {
+          return { title: s, durationHours: Math.max(0.5, Math.round((estimatedHours / Math.max(1, subtasksRaw.length)) * 10) / 10) };
         }
-
         return {
-          title,
-          deadline,
-          estimatedHours,
-          priority,
-          type,
-          isVague: !!rawParsed.isVague,
-          clarifyingQuestion: rawParsed.clarifyingQuestion || "",
-          confidence: 0.95,
-          subtasks,
-          registrationLink: rawParsed.registrationLink || null,
-          prizes: rawParsed.prizes || null,
-          eligibility: rawParsed.eligibility || null,
-          location: rawParsed.location || null
+          title: s.title || s.step || s.name || "Subtask step",
+          durationHours: parseFloat(s.durationHours || s.hours || s.duration) || 0.5
         };
-      } catch (groqErr) {
-        console.warn("Groq cloud parser failed, falling back to local:", groqErr.message);
+      }) : [];
+      
+      if (subtasks.length === 0) {
+        subtasks = [
+          { title: `Prepare & organize: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.3 * 10) / 10) },
+          { title: `Execute core actions: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.5 * 10) / 10) },
+          { title: `Final review & polish: ${title}`, durationHours: Math.max(0.5, Math.round(estimatedHours * 0.2 * 10) / 10) }
+        ];
       }
+
+      return {
+        title,
+        deadline,
+        estimatedHours,
+        priority,
+        type,
+        isVague: !!rawParsed.isVague,
+        clarifyingQuestion: rawParsed.clarifyingQuestion || "",
+        confidence: 0.95,
+        subtasks,
+        registrationLink: rawParsed.registrationLink || rawParsed.url || rawParsed.link || null,
+        prizes: rawParsed.prizes || rawParsed.prize || rawParsed.rewards || null,
+        eligibility: rawParsed.eligibility || rawParsed.eligible || null,
+        location: rawParsed.location || rawParsed.place || null
+      };
+    } catch (groqErr) {
+      console.warn("Groq cloud parser failed, falling back:", groqErr.message);
     }
+  }
+
+  if (!apiKey) {
 
     const offlinePreference = localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu";
     if (offlinePreference === "heuristics") {
@@ -507,7 +578,7 @@ Return the JSON matching the required schema.
   }
 
   // Updated to use the gemini-2.5-flash model on v1beta endpoint
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -758,11 +829,8 @@ function parseTaskLocally(userInput, errorMsg) {
 }
 
 export async function optimizeScheduleWithGemini(tasks, meetings, profile, workDays) {
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("Gemini API key is missing. Using local optimizer fallback.");
-    return optimizeScheduleLocally(tasks, meetings, workDays);
-  }
+  const apiKey = getConfiguredGeminiApiKey();
+  const groqApiKey = getConfiguredGroqApiKey();
 
   const activeTasks = tasks.filter(t => t.status !== "completed").map(t => ({
     id: t.id,
@@ -835,33 +903,16 @@ Return a JSON object containing the optimized subtask slots mapping under the ke
     required: ["optimizedSlots"]
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const errMsg = errData?.error?.message || `HTTP ${response.status}`;
-      throw new Error(`Schedule Optimization Failed: ${errMsg}`);
+    if (groqApiKey) {
+      return await callGroqJson({ promptText, apiKey: groqApiKey, model: GROQ_CHAT_MODEL });
     }
-
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("Empty response from AI Optimizer.");
-    return JSON.parse(text);
+    if (apiKey) {
+      return await callGeminiJson({ promptText, apiKey, responseSchema });
+    }
+    throw new Error("No cloud AI key configured");
   } catch (err) {
-    console.warn("AI Schedule Optimizer call failed. Falling back to local heuristic optimization:", err.message);
+    console.warn("AI Schedule Optimizer failed. Falling back to local heuristic optimization:", err.message);
     return optimizeScheduleLocally(tasks, meetings, workDays);
   }
 }
@@ -940,13 +991,8 @@ function optimizeScheduleLocally(tasks, meetings, workDays) {
 }
 
 export async function forecastHabitSuccess(habits, profile) {
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    return {
-      successRate: 75,
-      coachingText: "[Local Fallback] Maintain your streaks by executing habits in your morning Peak Focus window. Action breeds routine!"
-    };
-  }
+  const apiKey = getConfiguredGeminiApiKey();
+  const groqApiKey = getConfiguredGroqApiKey();
 
   const prompt = `
 You are the AI Habit Coach of DeadlineIQ.
@@ -969,25 +1015,14 @@ Provide a predicted success percentage (between 10% and 99%) and exactly 2 sente
     required: ["successRate", "coachingText"]
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: schema,
-        }
-      })
-    });
-
-    if (!response.ok) throw new Error("API call failed");
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    return JSON.parse(text);
+    if (groqApiKey) {
+      return await callGroqJson({ promptText: prompt, apiKey: groqApiKey, model: GROQ_FAST_MODEL });
+    }
+    if (apiKey) {
+      return await callGeminiJson({ promptText: prompt, apiKey, responseSchema: schema });
+    }
+    throw new Error("No cloud AI key configured");
   } catch (err) {
     console.warn("Habit Forecast call failed, using local heuristics:", err.message);
     return {
@@ -998,8 +1033,8 @@ Provide a predicted success percentage (between 10% and 99%) and exactly 2 sente
 }
 
 export async function chatWithProductivityAgent(message, history, currentTasks, profile) {
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
-  const groqApiKey = localStorage.getItem("deadlineiq_groq_api_key") || import.meta.env.VITE_GROQ_API_KEY;
+  const apiKey = getConfiguredGeminiApiKey();
+  const groqApiKey = getConfiguredGroqApiKey();
 
   const activeTasks = currentTasks.map(t => ({
     id: t.id,
@@ -1034,15 +1069,16 @@ Return a JSON matching the schema.
 User Message: "${message}"
 `;
 
-  if (!apiKey) {
-    if (groqApiKey) {
-      console.info("Gemini key missing but Groq key found. Routing chat to Groq Cloud API...");
-      try {
-        return await chatWithGroqCloudLLM(message, history, currentTasks, profile, groqApiKey);
-      } catch (groqErr) {
-        console.warn("Groq cloud chat failed, falling back to local:", groqErr.message);
-      }
+  if (groqApiKey) {
+    console.info("Routing chat to primary Groq Cloud API...");
+    try {
+      return await chatWithGroqCloudLLM(message, history, currentTasks, profile, groqApiKey);
+    } catch (groqErr) {
+      console.warn("Groq cloud chat failed, falling back:", groqErr.message);
     }
+  }
+
+  if (!apiKey) {
 
     const offlinePreference = localStorage.getItem("deadlineiq_offline_mode_preference") || "webgpu";
     if (offlinePreference === "heuristics") {
@@ -1094,7 +1130,7 @@ User Message: "${message}"
     required: ["reply", "action"]
   };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -1132,7 +1168,7 @@ User Message: "${message}"
  * Parses multimodal files (images, PDFs, screenshots) using Gemini 2.5 Flash.
  */
 export async function parseMediaWithGemini(base64Data, mimeType) {
-  const apiKey = localStorage.getItem("deadlineiq_gemini_api_key") || import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = getConfiguredGeminiApiKey();
   if (!apiKey) {
     throw new Error("Gemini API Key is missing. Please configure it in Settings to parse files.");
   }
@@ -1166,7 +1202,7 @@ Extract and return a structured JSON task with these fields:
 Return the JSON matching the required schema.
 `;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -1227,6 +1263,4 @@ Return the JSON matching the required schema.
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
   return JSON.parse(text);
 }
-
-
 
