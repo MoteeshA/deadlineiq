@@ -81,16 +81,21 @@ export default function Calendar() {
   const handleConnectGoogleCalendar = async () => {
     const provider = new GoogleAuthProvider();
     provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
+    provider.addScope("https://www.googleapis.com/auth/gmail.send");
 
     try {
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       const token = credential?.accessToken;
+      const user = result?.user;
 
       if (token) {
         setGoogleAccessToken(token);
         localStorage.setItem("deadlineiq_google_oauth_token", token);
-        addToast("Successfully connected Google Calendar!", { type: "success" });
+        if (user?.email) {
+          localStorage.setItem("deadlineiq_user_email", user.email);
+        }
+        addToast("Successfully connected Google Workspace (Calendar + Gmail Alerts)!", { type: "success" });
       } else {
         throw new Error("No access token returned");
       }

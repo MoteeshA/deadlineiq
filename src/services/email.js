@@ -1,54 +1,72 @@
 import { predictProcrastinationRisk } from "../utils/localML";
 
 /**
- * Dispatches an email request to the Resend API.
- * @param {string} subject - Email subject line
- * @param {string} htmlBody - HTML body content
+ * Encodes a MIME message to Base64URL format compliant with the Gmail API.
+ */
+function buildRawMimeEmail(to, subject, htmlBody) {
+  const utf8Subject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+  const emailLines = [
+    `From: me`,
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=utf-8`,
+    `Content-Transfer-Encoding: 7bit`,
+    "",
+    htmlBody
+  ];
+  
+  const rawEmail = emailLines.join("\r\n");
+  
+  // Safe Base64URL encoding
+  return btoa(unescape(encodeURIComponent(rawEmail)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/**
+ * Dispatches an email request to the Gmail API using the user's Google OAuth Token.
  */
 export async function sendEmailNotification(subject, htmlBody) {
-  const apiKey = localStorage.getItem("deadlineiq_resend_api_key") || import.meta.env.VITE_RESEND_API_KEY;
-  const recipientEmail = localStorage.getItem("deadlineiq_resend_recipient_email") || import.meta.env.VITE_RESEND_RECIPIENT_EMAIL;
+  // Use the active Google OAuth token
+  const token = localStorage.getItem("deadlineiq_google_oauth_token");
+  const userEmail = localStorage.getItem("deadlineiq_user_email") || "me";
 
-  if (!apiKey || !recipientEmail) {
-    console.warn("Resend email alerts are not fully configured in Settings. Skipping dispatch.");
+  if (!token) {
+    console.warn("Google OAuth token is missing. Please log in or connect Google Calendar to enable automatic email notifications.");
     return false;
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
+    const rawMessage = buildRawMimeEmail(userEmail, subject, htmlBody);
+    const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey.trim()}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "DeadlineIQ Alerts <onboarding@resend.dev>",
-        to: recipientEmail.trim(),
-        subject: subject,
-        html: htmlBody,
+        raw: rawMessage,
       }),
     });
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData?.message || `HTTP ${response.status} Error`);
+      throw new Error(errData?.error?.message || `HTTP ${response.status} Error`);
     }
 
     return true;
   } catch (error) {
-    console.error("Resend notification dispatch failed:", error);
+    console.error("Gmail API notification dispatch failed:", error);
     throw error;
   }
 }
 
 /**
  * Assesses procrastination risk on a task and triggers an alert if risk is moderate or high.
- * @param {object} task - The task object containing title, priority, deadline, estimatedHours, subtasks
- * @param {string} triggerContext - Context for toast message (e.g. "creation", "deferral")
- * @returns {Promise<boolean>} True if alert sent, false otherwise
  */
 export async function checkAndTriggerEmail(task, triggerContext = "creation") {
-  // Prevent sending alerts if task is already completed
   if (task.status === "completed") return false;
 
   const riskScore = Math.round(predictProcrastinationRisk(task));
@@ -70,7 +88,7 @@ export async function checkAndTriggerEmail(task, triggerContext = "creation") {
 
   const subject = `⚠️ Procrastination Alert: ${riskLevel} Risk detected for "${task.title}"`;
   const htmlBody = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; rounded-2xl; background-color: #FAFAFA;">
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FAFAFA;">
       <h2 style="color: #1E293B; margin-top: 0; font-size: 20px; font-weight: 800; border-bottom: 2px solid ${riskColor}; padding-bottom: 12px;">
         DeadlineIQ Predictive Telemetry
       </h2>
@@ -78,7 +96,7 @@ export async function checkAndTriggerEmail(task, triggerContext = "creation") {
         Our client-side neural network has run analysis on a task update and predicted a <strong>${riskLevel} PROCRASTINATION RISK</strong>.
       </p>
       
-      <div style="background-color: #FFFbeb; border-left: 4px solid ${riskColor}; padding: 16px; margin: 20px 0; border-radius: 8px;">
+      <div style="background-color: #FFFBEB; border-left: 4px solid ${riskColor}; padding: 16px; margin: 20px 0; border-radius: 8px;">
         <h3 style="color: #78350F; margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
           Telemetry Forecast Details
         </h3>
@@ -119,7 +137,7 @@ export async function checkAndTriggerEmail(task, triggerContext = "creation") {
         Trigger Context: Task ${triggerContext} • Local model weight iteration active.
       </p>
       
-      <div style="margin-top: 24px; border-t: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
+      <div style="margin-top: 24px; border-top: 1px solid #E2E8F0; padding-top: 16px; text-align: center;">
         <a href="https://deadlineiq-6321f.web.app" style="display: inline-block; background-color: #6366F1; color: #FFFFFF; font-weight: bold; font-size: 12px; text-decoration: none; padding: 10px 20px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
           Open Live Workspace
         </a>

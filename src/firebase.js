@@ -15,7 +15,9 @@ const app = initializeApp(firebaseConfig);
 
 // Auth
 export const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+export const provider = new GoogleAuthProvider();
+provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
+provider.addScope("https://www.googleapis.com/auth/gmail.send");
 
 export const signInWithGoogle = () => signInWithPopup(auth, provider);
 

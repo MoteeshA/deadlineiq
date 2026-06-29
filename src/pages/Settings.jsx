@@ -223,49 +223,27 @@ export default function Settings() {
           </form>
         </div>
 
-        {/* Resend Email Alerts Configuration */}
+        {/* Automatic Google Email Notifications */}
         <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 sm:p-8">
           <h3 className="text-base font-bold text-slate-200 mb-2 flex items-center gap-2 select-none">
             <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg> Resend Email Notifications
+            </svg> Automatic Email Notifications
           </h3>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-xl mb-5">
-            Link a free Resend.com API key and your registered recipient email to receive proactive notifications and procrastination warnings triggered by the local neural net.
+          <p className="text-xs text-slate-400 leading-relaxed max-w-xl mb-4">
+            DeadlineIQ features direct, zero-configuration Gmail integration. When you log in with Google, email alerts are dynamically configured and dispatched using the Gmail API.
           </p>
 
-          <form onSubmit={handleSaveResend} className="space-y-4 max-w-lg">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
-                Resend API Key
-              </label>
-              <input
-                type="password"
-                placeholder="re_your_free_resend_key"
-                value={resendKey}
-                onChange={(e) => setResendKey(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition"
-              />
+          <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-xl space-y-2 max-w-lg">
+            <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Gmail API Integration Active
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider select-none">
-                Recipient Notification Email
-              </label>
-              <input
-                type="email"
-                placeholder="e.g. your_email@example.com"
-                value={resendEmail}
-                onChange={(e) => setResendEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs tracking-wide transition active:scale-[0.98] cursor-pointer"
-            >
-              Save Email Config
-            </button>
-          </form>
+            <p className="text-[11px] text-slate-400 leading-relaxed font-semibold">
+              Notifications and procrastination forecasts will be sent automatically to your authenticated email: 
+              <strong className="text-slate-200 block mt-1 font-mono">{user?.email || "Connect Google Workspace to enable"}</strong>
+            </p>
+          </div>
         </div>
 
         {/* ElevenLabs API Configuration */}

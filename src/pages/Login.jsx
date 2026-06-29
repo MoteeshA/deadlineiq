@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { auth, signInWithGoogle, db } from "../firebase";
+import { GoogleAuthProvider } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -44,6 +45,16 @@ export default function Login() {
     try {
       const result = await signInWithGoogle();
       const user = result.user;
+
+      // Extract and save Google OAuth credentials
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      if (token) {
+        localStorage.setItem("deadlineiq_google_oauth_token", token);
+      }
+      if (user.email) {
+        localStorage.setItem("deadlineiq_user_email", user.email);
+      }
 
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, {
