@@ -55,7 +55,7 @@ export default function Extension() {
           const contentSource = `Source URL: ${urlParam || "unspecified"}\nPage Title: ${titleParam || "unspecified"}\nContent Summary: ${textParam || "unspecified"}`;
           
           // Call Gemini
-          const taskData = await parseTaskWithGemini(contentSource);
+          const taskData = await parseTaskWithGemini(contentSource, setStatusText);
           await saveCapturedTask(taskData, "Bookmarklet Capture");
           
           setStatusText("Success! Opportunity logged in your board.");
@@ -151,7 +151,7 @@ export default function Extension() {
               }
 
               setStatusText("Extracting tasks from OCR text with local model...");
-              const parsedTask = await parseTaskWithGemini(`[Extracted from Screenshot/Image OCR]\n${extractedText}`);
+              const parsedTask = await parseTaskWithGemini(`[Extracted from Screenshot/Image OCR]\n${extractedText}`, setStatusText);
               await saveCapturedTask(parsedTask, `Offline Image OCR: ${file.name}`);
               return;
             } else {
@@ -247,7 +247,7 @@ export default function Extension() {
       const pageText = doc.body.innerText.replace(/\s+/g, " ").substring(0, 3000);
 
       setStatusText("Extracting opportunity details and scheduling constraints with Gemini...");
-      const taskData = await parseTaskWithGemini(`Scraped Website URL: ${urlInput}\nPage Contents: ${pageText}`);
+      const taskData = await parseTaskWithGemini(`Scraped Website URL: ${urlInput}\nPage Contents: ${pageText}`, setStatusText);
       await saveCapturedTask(taskData, `Web: ${urlInput}`);
       
       setUrlInput("");
@@ -268,7 +268,7 @@ export default function Extension() {
     setStatusText("Analyzing text block for opportunities...");
 
     try {
-      const taskData = await parseTaskWithGemini(textInput.trim());
+      const taskData = await parseTaskWithGemini(textInput.trim(), setStatusText);
       await saveCapturedTask(taskData, "Text Capture");
       setTextInput("");
     } catch (err) {
