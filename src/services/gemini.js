@@ -37,7 +37,10 @@ export async function preloadWebLlm(onProgress) {
 /**
  * Loads and queries WebLLM model directly inside the browser using WebGPU (100% self-contained).
  */
-async function queryInBrowserLLM(promptText, onProgress) {
+/**
+ * Loads and queries WebLLM model directly inside the browser using WebGPU (100% self-contained).
+ */
+async function queryInBrowserLLM(userInput, currentLocalTime, onProgress) {
   if (!navigator.gpu) {
     throw new Error("WebGPU is not supported by your browser. Please use Chrome or Safari 17.4+.");
   }
@@ -59,11 +62,32 @@ async function queryInBrowserLLM(promptText, onProgress) {
 
   if (onProgress) onProgress("Local AI is thinking (using WebGPU)...");
   
+  const simplifiedPrompt = `
+You are the AI task extractor of DeadlineIQ.
+Analyze this user task description: "${userInput}"
+
+Reference Local Date/Time: ${currentLocalTime} (Current Year is 2026).
+
+Return a JSON object with these exact keys:
+- "title": Concise task name (string)
+- "deadline": ISO 8601 DateTime string (or null if none)
+- "estimatedHours": Total estimated hours (number)
+- "priority": "low" or "medium" or "high" (string)
+- "type": Category category (string)
+- "subtasks": Array of 3-5 subtask objects, each with "title" (string) and "durationHours" (number)
+- "registrationLink": Direct registration URL in text (string or null)
+- "prizes": Prize description if any (string or null)
+- "eligibility": Eligibility criteria if any (string or null)
+- "location": Physical location or "Online" (string or null)
+
+Format the response as a single valid JSON object. Do not include extra conversational text.
+`;
+
   const response = await webLlmEngine.chat.completions.create({
     messages: [
-      { role: "system", content: "You extract tasks and return structured JSON matching the requested schema." },
-      { role: "user", content: promptText }
-    ]
+      { role: "user", content: simplifiedPrompt }
+    ],
+    response_format: { type: "json_object" }
   });
 
   const content = response.choices[0].message.content;
@@ -78,10 +102,13 @@ async function queryInBrowserLLM(promptText, onProgress) {
         estimatedHours: parseFloat(rawParsed.estimatedHours) || 2,
         priority: rawParsed.priority || "medium",
         type: rawParsed.type || "General",
-        isVague: !!rawParsed.isVague,
-        clarifyingQuestion: rawParsed.clarifyingQuestion || "",
-        confidence: parseFloat(rawParsed.confidence) || 0.8,
-        subtasks: Array.isArray(rawParsed.subtasks) ? rawParsed.subtasks : [],
+        isVague: false,
+        clarifyingQuestion: "",
+        confidence: 0.85,
+        subtasks: Array.isArray(rawParsed.subtasks) ? rawParsed.subtasks.map(s => ({
+          title: s.title || "Subtask step",
+          durationHours: parseFloat(s.durationHours) || 0.5
+        })) : [],
         registrationLink: rawParsed.registrationLink || null,
         prizes: rawParsed.prizes || null,
         eligibility: rawParsed.eligibility || null,
@@ -247,7 +274,7 @@ Return the JSON matching the required schema.
     try {
       // 1. Try local WebLLM directly inside browser (WebGPU accelerated)
       if (navigator.gpu) {
-        return await queryInBrowserLLM(promptText, onProgress);
+        return await queryInBrowserLLM(userInput, currentLocalTime, onProgress);
       }
     } catch (webLlmErr) {
       console.warn("In-browser WebLLM failed, trying fallback LLMs:", webLlmErr.message);
