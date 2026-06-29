@@ -1,6 +1,16 @@
 let webLlmEngine = null;
 
 /**
+ * Helper to race a promise against a timeout.
+ */
+function withTimeout(promise, ms, errorMessage = "Timeout exceeded") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(errorMessage)), ms))
+  ]);
+}
+
+/**
  * Checks if the WebLLM engine has been successfully preloaded.
  */
 export function isWebLlmPreloaded() {
@@ -202,14 +212,17 @@ async function chatWithLocalOfflineLLM(promptText) {
   // 1. Try local WebLLM first!
   try {
     if (navigator.gpu && webLlmEngine) {
-      const response = await webLlmEngine.chat.completions.create({
+      const chatPromise = webLlmEngine.chat.completions.create({
         messages: [{ role: "user", content: simplifiedPrompt }]
+      }).then(response => {
+        const content = response.choices[0].message.content;
+        return {
+          reply: content || "I'm here to help!",
+          action: { type: "NONE", payload: {} }
+        };
       });
-      const content = response.choices[0].message.content;
-      return {
-        reply: content || "I'm here to help!",
-        action: { type: "NONE", payload: {} }
-      };
+
+      return await withTimeout(chatPromise, 6000, "In-browser GPU chat timeout");
     }
   } catch (webLlmErr) {
     console.warn("In-browser WebLLM failed for chat:", webLlmErr.message);
@@ -298,7 +311,11 @@ Return the JSON matching the required schema.
     try {
       // 1. Try local WebLLM directly inside browser (WebGPU accelerated)
       if (navigator.gpu) {
-        return await queryInBrowserLLM(userInput, currentLocalTime, onProgress);
+        return await withTimeout(
+          queryInBrowserLLM(userInput, currentLocalTime, onProgress),
+          7000,
+          "In-browser GPU model compilation timeout"
+        );
       }
     } catch (webLlmErr) {
       console.warn("In-browser WebLLM failed, trying fallback LLMs:", webLlmErr.message);
