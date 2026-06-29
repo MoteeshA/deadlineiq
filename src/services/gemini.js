@@ -70,7 +70,26 @@ async function queryInBrowserLLM(promptText, onProgress) {
   const jsonStart = content.indexOf("{");
   const jsonEnd = content.lastIndexOf("}");
   if (jsonStart !== -1 && jsonEnd !== -1) {
-    return JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+    try {
+      const rawParsed = JSON.parse(content.substring(jsonStart, jsonEnd + 1));
+      return {
+        title: rawParsed.title || "Captured Task",
+        deadline: rawParsed.deadline || null,
+        estimatedHours: parseFloat(rawParsed.estimatedHours) || 2,
+        priority: rawParsed.priority || "medium",
+        type: rawParsed.type || "General",
+        isVague: !!rawParsed.isVague,
+        clarifyingQuestion: rawParsed.clarifyingQuestion || "",
+        confidence: parseFloat(rawParsed.confidence) || 0.8,
+        subtasks: Array.isArray(rawParsed.subtasks) ? rawParsed.subtasks : [],
+        registrationLink: rawParsed.registrationLink || null,
+        prizes: rawParsed.prizes || null,
+        eligibility: rawParsed.eligibility || null,
+        location: rawParsed.location || null
+      };
+    } catch (parseErr) {
+      console.warn("Local JSON parse failed, falling back to deterministic: ", parseErr);
+    }
   }
   throw new Error("In-browser model output did not contain structured JSON");
 }
@@ -123,55 +142,60 @@ async function queryLocalOfflineLLM(promptText) {
  * Queries local offline LLM for conversational chatbot replies.
  */
 async function chatWithLocalOfflineLLM(promptText) {
-  // Try local WebLLM first!
+  // Extract user message from structured promptText if possible
+  const userMessageMatch = promptText.match(/User Message:\s*"([^"]+)"/is);
+  const userMessage = userMessageMatch ? userMessageMatch[1].trim() : promptText;
+  
+  const simplifiedPrompt = `You are the AI Productivity Agent of DeadlineIQ. Chat with the user and reply to their message: "${userMessage}"`;
+
+  // 1. Try local WebLLM first!
   try {
     if (navigator.gpu && webLlmEngine) {
       const response = await webLlmEngine.chat.completions.create({
-        messages: [{ role: "user", content: promptText }]
+        messages: [{ role: "user", content: simplifiedPrompt }]
       });
       const content = response.choices[0].message.content;
-      const jsonStart = content.indexOf("{");
-      const jsonEnd = content.lastIndexOf("}");
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        return JSON.parse(content.substring(jsonStart, jsonEnd + 1));
-      }
+      return {
+        reply: content || "I'm here to help!",
+        action: { type: "NONE", payload: {} }
+      };
     }
   } catch (webLlmErr) {
     console.warn("In-browser WebLLM failed for chat:", webLlmErr.message);
   }
 
-  // 1. Try Ollama local completions
+  // 2. Try Ollama local completions
   try {
     const response = await fetch("http://localhost:11434/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "gemma2" || "gemma" || "llama3",
-        messages: [{ role: "user", content: promptText }],
-        response_format: { type: "json_object" }
+        messages: [{ role: "user", content: simplifiedPrompt }]
       })
     });
     
     if (response.ok) {
       const data = await response.json();
-      const text = data.choices?.[0]?.message?.content;
-      return JSON.parse(text);
+      const content = data.choices?.[0]?.message?.content;
+      return {
+        reply: content || "I'm here to help!",
+        action: { type: "NONE", payload: {} }
+      };
     }
   } catch (ollamaErr) {
     console.warn("Ollama chat fallback failed:", ollamaErr.message);
   }
 
-  // 2. Try Chrome Built-in Gemini Nano
+  // 3. Try Chrome Built-in Gemini Nano
   try {
     if (window.ai && window.ai.assistant) {
       const session = await window.ai.assistant.create();
-      const rawResponse = await session.prompt(promptText);
-      const jsonStart = rawResponse.indexOf("{");
-      const jsonEnd = rawResponse.lastIndexOf("}");
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        const jsonStr = rawResponse.substring(jsonStart, jsonEnd + 1);
-        return JSON.parse(jsonStr);
-      }
+      const content = await session.prompt(simplifiedPrompt);
+      return {
+        reply: content || "Let's plan your tasks!",
+        action: { type: "NONE", payload: {} }
+      };
     }
   } catch (chromeAiErr) {
     console.warn("Chrome AI chat fallback failed:", chromeAiErr.message);
